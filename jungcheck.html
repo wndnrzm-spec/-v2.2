@@ -87,6 +87,7 @@ input[type="text"]::placeholder { color: #3a4560; }
 /* 좌측 결과 패널 */
 .left {
   flex: 1;
+  min-width: 0;
   padding: 24px 28px;
   overflow-y: auto;
   border-right: 1px solid #1e2535;
@@ -154,10 +155,10 @@ input[type="text"]::placeholder { color: #3a4560; }
 
 /* 우측 기준 표 패널 */
 .right {
-  width: 420px;
+  width: 50%;
   flex-shrink: 0;
   background: #141920;
-  padding: 24px 20px;
+  padding: 24px 28px;
   overflow-y: auto;
   display: none;
 }
