@@ -15,42 +15,24 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 30px 16px;
+    padding: 30px 16px 60px;
   }
 
-  .header {
-    text-align: center;
-    margin-bottom: 32px;
-  }
-
-  .header h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.5px;
-  }
-
-  .header p {
-    font-size: 0.82rem;
-    color: #7a8aaa;
-    margin-top: 6px;
-  }
+  .header { text-align: center; margin-bottom: 28px; }
+  .header h1 { font-size: 1.6rem; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+  .header p { font-size: 0.82rem; color: #7a8aaa; margin-top: 6px; }
 
   .card {
     background: #242b3d;
     border: 1px solid #2e3a52;
     border-radius: 14px;
-    padding: 28px 24px;
+    padding: 24px 20px;
     width: 100%;
-    max-width: 480px;
+    max-width: 520px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   }
 
-  .input-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
+  .input-row { display: flex; gap: 10px; margin-bottom: 18px; }
 
   input[type="text"] {
     flex: 1;
@@ -64,135 +46,143 @@
     outline: none;
     transition: border-color 0.2s;
   }
-
-  input[type="text"]:focus {
-    border-color: #4a8cff;
-  }
-
-  input[type="text"]::placeholder {
-    color: #4a5570;
-  }
+  input[type="text"]:focus { border-color: #4a8cff; }
+  input[type="text"]::placeholder { color: #4a5570; }
 
   button {
-    background: #4a8cff;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-family: inherit;
-    font-weight: 600;
-    padding: 12px 20px;
-    cursor: pointer;
-    transition: background 0.2s;
-    white-space: nowrap;
+    background: #4a8cff; color: #fff; border: none;
+    border-radius: 8px; font-size: 0.95rem; font-family: inherit;
+    font-weight: 600; padding: 12px 20px; cursor: pointer;
+    transition: background 0.2s; white-space: nowrap;
   }
-
   button:hover { background: #2e6edc; }
-  button:active { background: #1a56c0; }
 
-  .result-box {
-    display: none;
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-  }
-
+  .result-box { display: none; border-radius: 10px; padding: 16px; text-align: center; }
   .result-box.show { display: block; }
+  .result-box.found { background: #1a2a1a; border: 1.5px solid #2a6a2a; }
+  .result-box.normal { background: #1a2234; border: 1.5px solid #2a4a7a; }
 
-  .result-box.found {
-    background: #1a2a1a;
-    border: 1.5px solid #2a6a2a;
-  }
-
-  .result-box.not-found {
-    background: #2a1a1a;
-    border: 1.5px solid #6a2a2a;
-  }
-
-  .result-box.normal {
-    background: #1a2234;
-    border: 1.5px solid #2a4a7a;
-  }
-
-  .result-label {
-    font-size: 0.78rem;
-    color: #7a8aaa;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .result-part {
-    font-size: 1rem;
-    color: #aabbdd;
-    margin-bottom: 14px;
-    font-weight: 500;
-  }
-
-  .result-grade {
-    font-size: 1.8rem;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-
+  .result-label { font-size: 0.75rem; color: #7a8aaa; margin-bottom: 4px; letter-spacing: 1px; }
+  .result-part { font-size: 1rem; color: #aabbdd; margin-bottom: 12px; font-weight: 500; }
+  .result-grade { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
   .found .result-grade { color: #ff6b6b; }
-  .not-found .result-grade { color: #888; font-size: 1rem; font-weight: 400; }
   .normal .result-grade { color: #4ac4ff; font-size: 1.1rem; }
+  .result-date { font-size: 0.78rem; color: #5a6a8a; margin-top: 6px; }
 
-  .result-date {
-    font-size: 0.8rem;
-    color: #5a6a8a;
-    margin-top: 8px;
-  }
-
-  .loading {
-    display: none;
-    text-align: center;
-    color: #4a8cff;
+  .result-item-box {
+    margin-top: 4px;
+    background: #1a1f2e;
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: left;
     font-size: 0.9rem;
-    padding: 16px 0;
+    color: #e0e6f0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    border: 1px solid #2e3a52;
   }
 
+  .loading { display: none; text-align: center; color: #4a8cff; font-size: 0.9rem; padding: 16px 0; }
   .loading.show { display: block; }
 
-  .multi-result {
-    display: none;
-  }
+  .multi-result { display: none; margin-top: 12px; }
   .multi-result.show { display: block; }
-
-  .multi-title {
-    font-size: 0.8rem;
-    color: #7a8aaa;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
+  .multi-title { font-size: 0.78rem; color: #7a8aaa; margin-bottom: 8px; letter-spacing: 1px; }
 
   .multi-item {
     background: #1a2234;
     border: 1px solid #2e3a52;
     border-radius: 8px;
-    padding: 12px 14px;
+    padding: 10px 14px;
     margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
   }
-
+  .multi-item-top { display: flex; justify-content: space-between; align-items: center; }
   .multi-item-date { font-size: 0.8rem; color: #7a8aaa; }
   .multi-item-grade { font-size: 1rem; font-weight: 700; color: #ff6b6b; }
-
-  .back-link {
-    margin-top: 24px;
-    font-size: 0.82rem;
-    color: #4a5570;
-    text-decoration: none;
-    display: inline-block;
+  .multi-item-desc {
+    font-size: 0.82rem; color: #aabbdd; margin-top: 6px;
+    padding-top: 6px; border-top: 1px solid #2e3a52;
+    white-space: pre-wrap; line-height: 1.5; text-align: left;
   }
-  .back-link:hover { color: #4a8cff; }
+
+  /* 양산 변동검사 기준 표 우측 고정 */
+  .std-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 290px;
+    background: #1e2535;
+    border: 1px solid #3a4a6a;
+    border-radius: 12px;
+    padding: 14px 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    z-index: 100;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+  .std-panel h3 {
+    font-size: 0.8rem; color: #4a8cff; margin-bottom: 10px;
+    border-bottom: 1px solid #2e3a52; padding-bottom: 8px;
+  }
+  .std-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+  .std-table th {
+    background: #2e3a52; color: #aabbdd;
+    padding: 5px 4px; text-align: center;
+    border: 1px solid #3a4a6a; font-weight: 600;
+  }
+  .std-table td {
+    padding: 4px 5px; border: 1px solid #2e3a52;
+    color: #c0ccdd; text-align: center; vertical-align: middle;
+  }
+  .std-table tr:nth-child(even) td { background: #1a2234; }
+  .std-table td:first-child { text-align: left; }
+  .std-note {
+    margin-top: 8px; font-size: 0.68rem; color: #7a8aaa;
+    line-height: 1.5; border-top: 1px solid #2e3a52; padding-top: 8px;
+  }
+
+  .back-btn { margin-top: 20px; text-align: center; }
+  .back-btn a {
+    display: inline-block; background: #2e3a52; color: #aabbdd;
+    text-decoration: none; padding: 12px 28px; border-radius: 8px;
+    font-size: 0.9rem; border: 1px solid #3a4a6a;
+  }
+  .back-btn a:hover { background: #3a4a6a; }
 </style>
 </head>
 <body>
+
+<!-- 양산 변동검사 기준 표 (우측 고정) -->
+<div class="std-panel">
+  <h3>📋 양산 변동검사 기준</h3>
+  <table class="std-table">
+    <thead>
+      <tr>
+        <th>구분</th>
+        <th>AQL</th>
+        <th>송도</th>
+        <th>통관</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Cable</td><td>G-1</td><td>G-1</td><td>G-1(최대 5pcs)</td></tr>
+      <tr><td>Frame &amp; HOUSING</td><td>G-1</td><td>G-1</td><td>G-1(최대 20pcs)+Hook</td></tr>
+      <tr><td>27Baron housing assy</td><td>G-1</td><td>-</td><td>G-1</td></tr>
+      <tr><td>LCD Module</td><td>G-1</td><td>10pcs</td><td>10pcs</td></tr>
+      <tr><td>옵티컬 본딩(BSK)</td><td>G-1</td><td>10pcs</td><td>-</td></tr>
+      <tr><td>옵티컬 본딩-러웨이</td><td>G-1</td><td>G-1</td><td>-</td></tr>
+      <tr><td>Board</td><td>G-1</td><td>G-1</td><td>10pcs</td></tr>
+      <tr><td>LGP</td><td>G-1</td><td>G-1</td><td>10pcs</td></tr>
+      <tr><td>Touch</td><td>G-1</td><td>G-1</td><td>-</td></tr>
+      <tr><td>외주 라미 글라스</td><td>G-1</td><td>15pcs</td><td>-</td></tr>
+      <tr><td>스킨 글라스</td><td>G-1</td><td>-</td><td>15pcs</td></tr>
+      <tr><td>부자재</td><td>G-1</td><td>G-1</td><td>5EA/Lot</td></tr>
+      <tr><td>SKD3</td><td>G-1</td><td>-</td><td>G-1(최대 20pcs)</td></tr>
+      <tr><td>외주 BLU/ASSY</td><td>G-1</td><td colspan="2">G-1/(분해검사 10Pcs)</td></tr>
+    </tbody>
+  </table>
+  <div class="std-note">* 중점검사 List 제외 / 초품은 G-2 검사 일괄 적용</div>
+</div>
 
 <div class="header">
   <h1>🔍 중점검사 조회</h1>
@@ -201,43 +191,47 @@
 
 <div class="card">
   <div class="input-row">
-    <input type="text" id="partInput" placeholder="품번 입력 (예: L28ELLN1EV_SK3)" autocomplete="off" />
+    <input type="text" id="partInput" placeholder="품번 입력 (예: MPH01-0016A)" autocomplete="off" />
     <button onclick="search()">조회</button>
   </div>
 
   <div class="loading" id="loading">조회 중...</div>
 
-  <!-- 단일 결과 -->
   <div class="result-box" id="resultBox">
     <div class="result-label">조회 품번</div>
     <div class="result-part" id="resultPart"></div>
     <div class="result-label">중점검사 등급</div>
     <div class="result-grade" id="resultGrade"></div>
-    <div id="resultItemRow" style="display:none; margin-top:12px;">
-      <div class="result-label">중점검사 항목</div>
-      <div id="resultItem" style="font-size:0.95rem; color:#e0e6f0; background:#1a1f2e; border-radius:8px; padding:10px 12px; margin-top:4px; line-height:1.5; text-align:left; white-space:pre-wrap;"></div>
+    <div id="resultItemRow" style="display:none;">
+      <div class="result-label" style="margin-top:12px;">중점검사 항목</div>
+      <div class="result-item-box" id="resultItem"></div>
     </div>
     <div class="result-date" id="resultDate"></div>
   </div>
 
-  <!-- 복수 결과 (이력이 여러 건일 때) -->
   <div class="multi-result" id="multiResult">
     <div class="multi-title">전체 이력 (<span id="multiCount"></span>건) — 최신순</div>
     <div id="multiList"></div>
   </div>
 </div>
 
-<div style="margin-top:24px; text-align:center;">
-  <a href="https://wndnrzm-spec.github.io/-v2.2/" style="display:inline-block; background:#2e3a52; color:#aabbdd; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:0.9rem; border:1px solid #3a4a6a; font-family:'Malgun Gothic',sans-serif;">← 출하검증 도구로 돌아가기</a>
+<div class="back-btn">
+  <a href="https://wndnrzm-spec.github.io/-v2.2/">← 출하검증 도구로 돌아가기</a>
 </div>
 
 <script>
-const SHEET_ID = '1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc';
-// C열=품번(col 2), B열=날짜(col 1), G열=등급(col 6) — 0-index 기준
-const COL_PART = 2;   // C열
-const COL_DATE = 1;   // B열
-const COL_ITEM = 4;   // E열 (중점검사 항목)
-const COL_GRADE = 6;  // G열
+const SHEET_ID  = '1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc';
+const COL_PART  = 2;  // C열 품번
+const COL_DATE  = 1;  // B열 날짜
+const COL_ITEM  = 4;  // E열 중점검사 항목
+const COL_GRADE = 6;  // G열 등급
+
+function getVal(row, idx) {
+  if (!row.c || !row.c[idx]) return '';
+  const c = row.c[idx];
+  if (c.v !== null && c.v !== undefined) return String(c.v);
+  return c.f || '';
+}
 
 function search() {
   const partRaw = document.getElementById('partInput').value.trim();
@@ -248,67 +242,61 @@ function search() {
   hide('multiResult');
   show('loading');
 
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+  // 시트명 "1. 중점검사 LIST" 지정
+  const sheetName = encodeURIComponent('1. 중점검사 LIST');
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
 
   fetch(url)
     .then(r => r.text())
     .then(text => {
-      // 구글 시트 응답에서 JSON 추출
       const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
       const rows = json.table.rows;
 
-      // 헤더행 제외 후 C열(품번) 기준 필터
-      const dataRows = rows.filter(row => row.c[COL_PART] && row.c[COL_PART].v);
-      const matched = dataRows.filter(row => {
-        const cell = row.c[COL_PART];
-        return String(cell.v).toUpperCase().trim() === part;
+      const matched = rows.filter(row => {
+        const cell = row.c ? row.c[COL_PART] : null;
+        return cell && cell.v && String(cell.v).toUpperCase().trim() === part;
       });
 
       hide('loading');
 
       if (matched.length === 0) {
-        // 없음 → 양산 변동검사 AQL 등급
         showResult('normal', part, '양산 변동검사 AQL 등급', '', '');
         return;
       }
 
-      if (matched.length === 1) {
-        const row = matched[0];
-        const grade = getVal(row, COL_GRADE) || '-';
-        const date = getVal(row, COL_DATE);
-        const item = getVal(row, COL_ITEM);
-        showResult('found', part, grade, item, date ? 'ISSUE 날짜: ' + date : '');
-        return;
-      }
-
-      // 여러 건 — 최신순 정렬 후 표시
       const sorted = [...matched].sort((a, b) => {
-        const da = getVal(a, COL_DATE);
-        const db = getVal(b, COL_DATE);
-        return da > db ? -1 : 1;
+        return getVal(a, COL_DATE) > getVal(b, COL_DATE) ? -1 : 1;
       });
 
-      // 최신 1건을 메인으로
       const latest = sorted[0];
-      const latestGrade = getVal(latest, COL_GRADE) || '-';
-      const latestDate = getVal(latest, COL_DATE);
-      const latestItem = getVal(latest, COL_ITEM);
-      showResult('found', part, latestGrade, latestItem, latestDate ? '최신 ISSUE 날짜: ' + latestDate : '');
+      showResult(
+        'found', part,
+        getVal(latest, COL_GRADE) || '-',
+        getVal(latest, COL_ITEM),
+        getVal(latest, COL_DATE) ? '최신 ISSUE 날짜: ' + getVal(latest, COL_DATE) : ''
+      );
 
-      // 전체 이력 표시
-      document.getElementById('multiCount').textContent = sorted.length;
-      const list = document.getElementById('multiList');
-      list.innerHTML = '';
-      sorted.forEach(row => {
-        const g = getVal(row, COL_GRADE) || '-';
-        const d = getVal(row, COL_DATE) || '-';
-        const i = getVal(row, COL_ITEM);
-        const div = document.createElement('div');
-        div.className = 'multi-item';
-        div.innerHTML = `<span class="multi-item-date">${d}</span><span class="multi-item-grade">${g}</span>`;
-        list.appendChild(div);
-      });
-      show('multiResult');
+      if (sorted.length > 1) {
+        document.getElementById('multiCount').textContent = sorted.length;
+        const list = document.getElementById('multiList');
+        list.innerHTML = '';
+        sorted.forEach(row => {
+          const g = getVal(row, COL_GRADE) || '-';
+          const d = getVal(row, COL_DATE) || '-';
+          const i = getVal(row, COL_ITEM);
+          const div = document.createElement('div');
+          div.className = 'multi-item';
+          div.innerHTML = `
+            <div class="multi-item-top">
+              <span class="multi-item-date">${d}</span>
+              <span class="multi-item-grade">${g}</span>
+            </div>
+            ${i ? `<div class="multi-item-desc">${i}</div>` : ''}
+          `;
+          list.appendChild(div);
+        });
+        show('multiResult');
+      }
     })
     .catch(err => {
       hide('loading');
@@ -316,17 +304,12 @@ function search() {
     });
 }
 
-function getVal(row, idx) {
-  if (!row.c[idx]) return '';
-  return row.c[idx].v !== null && row.c[idx].v !== undefined ? String(row.c[idx].v) : (row.c[idx].f || '');
-}
-
 function showResult(type, part, grade, item, date) {
   const box = document.getElementById('resultBox');
   box.className = 'result-box show ' + type;
   document.getElementById('resultPart').textContent = part;
   document.getElementById('resultGrade').textContent = grade;
-  document.getElementById('resultItem').textContent = item ? item : '';
+  document.getElementById('resultItem').textContent = item;
   document.getElementById('resultItemRow').style.display = item ? 'block' : 'none';
   document.getElementById('resultDate').textContent = date;
 }
@@ -334,7 +317,6 @@ function showResult(type, part, grade, item, date) {
 function show(id) { document.getElementById(id).classList.add('show'); }
 function hide(id) { document.getElementById(id).classList.remove('show'); }
 
-// 엔터키로도 조회
 document.getElementById('partInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') search();
 });
