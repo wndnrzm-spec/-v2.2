@@ -9,176 +9,269 @@
 <title>중점검사 조회</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
 body {
   font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
-  background: #1a1f2e; color: #e0e6f0;
-  min-height: 100vh; padding: 30px 16px 60px;
+  background: #12151f;
+  color: #e0e6f0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
-.wrap {
-  display: flex; gap: 24px; justify-content: center; align-items: flex-start;
+
+/* 상단 헤더 */
+.topbar {
+  background: #1a1f2e;
+  border-bottom: 1px solid #2e3a52;
+  padding: 10px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
 }
-.main { width: 100%; max-width: 520px; flex-shrink: 0; }
-.header { text-align: center; margin-bottom: 28px; }
-.header h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-.header p { font-size: 0.82rem; color: #7a8aaa; margin-top: 6px; }
-.card {
-  background: #242b3d; border: 1px solid #2e3a52;
-  border-radius: 14px; padding: 24px 20px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+.topbar-title { display: flex; align-items: center; gap: 10px; }
+.topbar-title .t { font-size: 1rem; font-weight: 700; color: #fff; }
+.topbar-title .s { font-size: 0.72rem; color: #5a6a8a; }
+.back-btn {
+  font-size: 0.8rem; color: #7a9adc; text-decoration: none;
+  padding: 7px 14px; border: 1px solid #2a3a6a;
+  border-radius: 6px; white-space: nowrap;
 }
-.input-row { display: flex; gap: 10px; margin-bottom: 18px; }
+.back-btn:hover { background: #1a2440; }
+
+/* 검색 바 */
+.search-bar {
+  padding: 20px 28px;
+  background: #161b28;
+  border-bottom: 1px solid #1e2535;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.search-inner {
+  display: flex; gap: 8px;
+  width: 100%; max-width: 600px;
+}
 input[type="text"] {
-  flex: 1; background: #1a1f2e; border: 1.5px solid #3a4560;
-  border-radius: 8px; color: #e0e6f0; font-size: 1rem;
-  font-family: inherit; padding: 12px 14px; outline: none;
+  flex: 1; background: #1a1f2e;
+  border: 1.5px solid #2e3a52;
+  border-radius: 8px; color: #e0e6f0;
+  font-size: 1.05rem; font-family: inherit;
+  padding: 13px 18px; outline: none;
   transition: border-color 0.2s;
 }
 input[type="text"]:focus { border-color: #4a8cff; }
-input[type="text"]::placeholder { color: #4a5570; }
-button {
+input[type="text"]::placeholder { color: #3a4560; }
+.btn-search {
   background: #4a8cff; color: #fff; border: none;
-  border-radius: 8px; font-size: 0.95rem; font-family: inherit;
-  font-weight: 600; padding: 12px 20px; cursor: pointer;
+  border-radius: 8px; font-size: 1rem; font-family: inherit;
+  font-weight: 700; padding: 13px 30px; cursor: pointer;
   transition: background 0.2s; white-space: nowrap;
 }
-button:hover { background: #2e6edc; }
-.result-box { display: none; border-radius: 10px; padding: 16px; text-align: center; }
-.result-box.show { display: block; }
-.result-box.found { background: #1a2a1a; border: 1.5px solid #2a6a2a; }
-.result-box.normal { background: #1a2234; border: 1.5px solid #2a4a7a; }
-.result-label { font-size: 0.75rem; color: #7a8aaa; margin-bottom: 4px; letter-spacing: 1px; }
-.result-part { font-size: 1rem; color: #aabbdd; margin-bottom: 12px; font-weight: 500; }
-.result-grade { font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
-.found .result-grade { color: #ff6b6b; }
-.normal .result-grade { color: #4ac4ff; font-size: 1.1rem; }
-.result-date { font-size: 0.78rem; color: #5a6a8a; margin-top: 6px; }
-.result-item-box {
-  margin-top: 4px; background: #1a1f2e; border-radius: 8px;
-  padding: 10px 12px; text-align: left; font-size: 0.9rem;
-  color: #e0e6f0; line-height: 1.6; white-space: pre-wrap;
-  border: 1px solid #2e3a52;
+.btn-search:hover { background: #2e6edc; }
+
+.loading {
+  display: none; text-align: center; color: #4a8cff;
+  font-size: 0.88rem; padding: 30px 0;
 }
-.loading { display: none; text-align: center; color: #4a8cff; font-size: 0.9rem; padding: 16px 0; }
 .loading.show { display: block; }
-.multi-result { display: none; margin-top: 12px; }
-.multi-result.show { display: block; }
-.multi-title { font-size: 0.78rem; color: #7a8aaa; margin-bottom: 8px; letter-spacing: 1px; }
-.multi-item {
-  background: #1a2234; border: 1px solid #2e3a52;
-  border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;
-}
-.multi-item-top { display: flex; justify-content: space-between; align-items: center; }
-.multi-item-date { font-size: 0.8rem; color: #7a8aaa; }
-.multi-item-grade { font-size: 1rem; font-weight: 700; color: #ff6b6b; }
-.multi-item-desc {
-  font-size: 0.82rem; color: #aabbdd; margin-top: 6px;
-  padding-top: 6px; border-top: 1px solid #2e3a52;
-  white-space: pre-wrap; line-height: 1.5; text-align: left;
+
+/* 메인 콘텐츠 - 좌우 분할 */
+.content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
-/* 양산 변동검사 기준 표 */
-.std-panel {
+/* 좌측 결과 패널 */
+.left {
+  flex: 1;
+  padding: 24px 28px;
+  overflow-y: auto;
+  border-right: 1px solid #1e2535;
+}
+
+.empty-state {
+  display: flex; align-items: center; justify-content: center;
+  height: 200px; color: #3a4560; font-size: 0.88rem;
+}
+
+/* 결과 카드 */
+.result-card {
+  border-radius: 12px; overflow: hidden; margin-bottom: 18px;
+}
+.result-card.found { border: 1px solid #2a5a2a; }
+.result-card.normal { border: 1px solid #2a3a7a; }
+
+.rc-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px;
+}
+.found .rc-head { background: #141f14; }
+.normal .rc-head { background: #111828; }
+
+.rc-partno { font-size: 1rem; font-weight: 700; color: #d0e8d0; letter-spacing: 0.5px; }
+.normal .rc-partno { color: #9ab0d8; }
+
+.rc-grade { font-size: 2.4rem; font-weight: 900; color: #ff6b6b; line-height: 1; }
+.normal .rc-grade { font-size: 1rem; font-weight: 700; color: #5a9aff; text-align: right; max-width: 200px; line-height: 1.4; }
+
+.rc-body { padding: 14px 20px 18px; }
+.found .rc-body { background: #192019; }
+.normal .rc-body { background: #111620; }
+
+.rc-date { font-size: 0.76rem; color: #4a6a4a; margin-bottom: 12px; }
+.normal .rc-date { color: #3a5a9a; }
+
+.item-label { font-size: 0.68rem; color: #5a7a5a; letter-spacing: 1px; margin-bottom: 6px; }
+.item-box {
+  background: #0e1610; border: 1px solid #1e3020; border-radius: 6px;
+  padding: 10px 14px; font-size: 0.9rem; color: #90c090;
+  line-height: 1.6; white-space: pre-wrap;
+}
+
+/* 이력 */
+.hist-title {
+  font-size: 0.72rem; color: #4a5a7a; letter-spacing: 1px;
+  margin-bottom: 10px; padding-bottom: 7px;
+  border-bottom: 1px solid #1a2030;
+}
+.hist-item {
+  background: #161b28; border: 1px solid #1e2535;
+  border-radius: 8px; padding: 11px 16px; margin-bottom: 7px;
+}
+.hist-item:hover { border-color: #2e3a52; }
+.hist-top { display: flex; justify-content: space-between; align-items: center; }
+.hist-date { font-size: 0.8rem; color: #5a6a8a; }
+.hist-grade { font-size: 1rem; font-weight: 700; color: #ff6b6b; }
+.hist-grade.aql { color: #5a9aff; font-size: 0.8rem; font-weight: 500; }
+.hist-desc {
+  font-size: 0.82rem; color: #8a9ab0; margin-top: 7px;
+  padding-top: 7px; border-top: 1px solid #1a2030;
+  line-height: 1.5; white-space: pre-wrap;
+}
+
+/* 우측 기준 표 패널 */
+.right {
+  width: 420px;
+  flex-shrink: 0;
+  background: #141920;
+  padding: 24px 20px;
+  overflow-y: auto;
   display: none;
-  width: 300px; flex-shrink: 0;
-  background: #1e2535; border: 1px solid #3a4a6a;
-  border-radius: 12px; padding: 14px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
-  align-self: flex-start;
-  position: sticky; top: 20px;
 }
-.std-panel.show { display: block; }
-.std-panel h3 {
-  font-size: 0.82rem; color: #4a8cff; margin-bottom: 10px;
-  border-bottom: 1px solid #2e3a52; padding-bottom: 8px;
+.right.show { display: block; }
+
+.std-title {
+  font-size: 0.82rem; font-weight: 700; color: #5a8adf;
+  letter-spacing: 1px; margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px solid #2e3a52;
 }
-.std-table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+.std-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 .std-table th {
-  background: #2e3a52; color: #aabbdd;
-  padding: 5px 4px; text-align: center;
-  border: 1px solid #3a4a6a; font-weight: 600;
+  background: #1e2838; color: #8aaac8;
+  padding: 10px 8px; text-align: center;
+  border: 1px solid #2a3a52; font-weight: 600;
+  font-size: 0.8rem;
 }
 .std-table td {
-  padding: 4px 5px; border: 1px solid #2e3a52;
-  color: #c0ccdd; text-align: center; vertical-align: middle;
+  padding: 9px 8px; border: 1px solid #1e2535;
+  color: #b8c8e0; text-align: center; vertical-align: middle;
+  line-height: 1.4;
 }
-.std-table tr:nth-child(even) td { background: #1a2234; }
-.std-table td:first-child { text-align: left; }
+.std-table tr:nth-child(odd) td { background: #131820; }
+.std-table tr:nth-child(even) td { background: #161c2a; }
+.std-table td:first-child { text-align: left; color: #d0ddf0; padding-left: 12px; font-weight: 500; }
+.std-table tr:hover td { background: #1e2840; }
 .std-note {
-  margin-top: 8px; font-size: 0.68rem; color: #7a8aaa;
-  line-height: 1.5; border-top: 1px solid #2e3a52; padding-top: 8px;
+  margin-top: 14px; font-size: 0.75rem; color: #6a7a9a;
+  line-height: 1.6; padding: 10px 14px;
+  background: #0e1318; border-radius: 6px;
+  border-left: 3px solid #2e4a8a;
 }
-.back-btn { margin-top: 20px; text-align: center; }
-.back-btn a {
-  display: inline-block; background: #2e3a52; color: #aabbdd;
-  text-decoration: none; padding: 12px 28px; border-radius: 8px;
-  font-size: 0.9rem; border: 1px solid #3a4a6a;
-}
-.back-btn a:hover { background: #3a4a6a; }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🔍 중점검사 조회</h1>
-  <p>품번을 입력하면 중점검사 등급을 확인합니다</p>
+<!-- 헤더 -->
+<div class="topbar">
+  <div class="topbar-title">
+    <span class="t">🔍 IQC 중점검사 조회</span>
+    <span class="s">품번으로 중점검사 등급 확인</span>
+  </div>
+  <a class="back-btn" href="https://wndnrzm-spec.github.io/-v2.2/">← 출하검증 도구</a>
 </div>
 
-<div class="wrap">
-  <!-- 좌측: 조회 영역 -->
-  <div class="main">
-    <div class="card">
-      <div class="input-row">
-        <input type="text" id="partInput" placeholder="품번 입력 (예: MPH01-0016A)" autocomplete="off" />
-        <button onclick="search()">조회</button>
-      </div>
-      <div class="loading" id="loading">조회 중...</div>
-      <div class="result-box" id="resultBox">
-        <div class="result-label">조회 품번</div>
-        <div class="result-part" id="resultPart"></div>
-        <div class="result-label">중점검사 등급</div>
-        <div class="result-grade" id="resultGrade"></div>
-        <div id="resultItemRow" style="display:none;">
-          <div class="result-label" style="margin-top:12px;">중점검사 항목</div>
-          <div class="result-item-box" id="resultItem"></div>
+<!-- 검색 -->
+<div class="search-bar">
+  <div class="search-inner">
+    <input type="text" id="partInput" placeholder="품번 입력 (예: MPH01-0016A)" autocomplete="off" />
+    <button class="btn-search" onclick="search()">조회</button>
+  </div>
+</div>
+
+<!-- 메인 콘텐츠 -->
+<div class="content">
+
+  <!-- 좌측: 결과 -->
+  <div class="left" id="leftPanel">
+    <div class="loading" id="loading">⏳ 조회 중...</div>
+    <div class="empty-state" id="emptyState">품번을 입력하고 조회 버튼을 눌러주세요</div>
+
+    <div class="result-card" id="resultCard" style="display:none;">
+      <div class="rc-head">
+        <div>
+          <div style="font-size:0.65rem;color:#4a6a4a;letter-spacing:1px;margin-bottom:5px;">PART NO.</div>
+          <div class="rc-partno" id="rcPart"></div>
         </div>
-        <div class="result-date" id="resultDate"></div>
+        <div style="text-align:right;">
+          <div style="font-size:0.65rem;letter-spacing:1px;margin-bottom:5px;color:#4a6a4a;" id="rcGradeLabel">등급</div>
+          <div class="rc-grade" id="rcGrade"></div>
+        </div>
       </div>
-      <div class="multi-result" id="multiResult">
-        <div class="multi-title">전체 이력 (<span id="multiCount"></span>건) — 최신순</div>
-        <div id="multiList"></div>
+      <div class="rc-body">
+        <div class="rc-date" id="rcDate"></div>
+        <div id="rcItemRow" style="display:none;">
+          <div class="item-label">중점검사 항목</div>
+          <div class="item-box" id="rcItem"></div>
+        </div>
       </div>
     </div>
-    <div class="back-btn">
-      <a href="https://wndnrzm-spec.github.io/-v2.2/">← 출하검증 도구로 돌아가기</a>
+
+    <div id="histSection" style="display:none;">
+      <div class="hist-title" id="histTitle"></div>
+      <div id="histList"></div>
     </div>
   </div>
 
-  <!-- 우측: 양산 변동검사 기준 표 (조회 시 표시) -->
-  <div class="std-panel" id="stdPanel">
-    <h3>📋 양산 변동검사 기준</h3>
+  <!-- 우측: 양산 변동검사 기준 표 -->
+  <div class="right" id="rightPanel">
+    <div class="std-title">📋 양산 변동검사 기준</div>
     <table class="std-table">
       <thead>
-        <tr><th>구분</th><th>AQL</th><th>송도</th><th>통관</th></tr>
+        <tr><th>구분</th><th>AQL 등급</th><th>송도 입고품</th><th>통관 입고품</th></tr>
       </thead>
       <tbody>
-        <tr><td>Cable</td><td>G-1</td><td>G-1</td><td>G-1(최대 5pcs)</td></tr>
-        <tr><td>Frame &amp; HOUSING</td><td>G-1</td><td>G-1</td><td>G-1(최대 20pcs)+Hook</td></tr>
+        <tr><td>Cable</td><td>G-1</td><td>G-1</td><td>G-1 (최대 5pcs)</td></tr>
+        <tr><td>Frame &amp; HOUSING</td><td>G-1</td><td>G-1</td><td>G-1 (최대 20pcs) + Hook</td></tr>
         <tr><td>27Baron housing assy</td><td>G-1</td><td>-</td><td>G-1</td></tr>
         <tr><td>LCD Module</td><td>G-1</td><td>10pcs</td><td>10pcs</td></tr>
-        <tr><td>옵티컬 본딩(BSK)</td><td>G-1</td><td>10pcs</td><td>-</td></tr>
-        <tr><td>옵티컬 본딩-러웨이</td><td>G-1</td><td>G-1</td><td>-</td></tr>
+        <tr><td>옵티컬 본딩 모듈(BSK)</td><td>G-1</td><td>10pcs</td><td>-</td></tr>
+        <tr><td>옵티컬 본딩(BSK)-러웨이</td><td>G-1</td><td>G-1</td><td>-</td></tr>
         <tr><td>Board</td><td>G-1</td><td>G-1</td><td>10pcs</td></tr>
         <tr><td>LGP</td><td>G-1</td><td>G-1</td><td>10pcs</td></tr>
         <tr><td>Touch</td><td>G-1</td><td>G-1</td><td>-</td></tr>
         <tr><td>외주 라미 글라스</td><td>G-1</td><td>15pcs</td><td>-</td></tr>
         <tr><td>스킨 글라스</td><td>G-1</td><td>-</td><td>15pcs</td></tr>
         <tr><td>부자재</td><td>G-1</td><td>G-1</td><td>5EA/Lot</td></tr>
-        <tr><td>SKD3</td><td>G-1</td><td>-</td><td>G-1(최대 20pcs)</td></tr>
-        <tr><td>외주 BLU/ASSY</td><td>G-1</td><td colspan="2">G-1/(분해검사 10Pcs)</td></tr>
+        <tr><td>SKD3</td><td>G-1</td><td>-</td><td>G-1 (최대 20pcs)</td></tr>
+        <tr><td>외주 BLU/ASSY</td><td>G-1</td><td colspan="2" style="text-align:center;">G-1 / (분해검사 10Pcs)</td></tr>
       </tbody>
     </table>
-    <div class="std-note">* 중점검사 List 제외 / 초품은 G-2 검사 일괄 적용</div>
+    <div class="std-note">* 상기 Table 중점검사 List 제외 / 초품은 G-2 검사 일괄 적용</div>
   </div>
+
 </div>
 
 <script>
@@ -200,7 +293,11 @@ function search() {
   if (!partRaw) { alert('품번을 입력해주세요.'); return; }
   const part = partRaw.toUpperCase();
 
-  hide('resultBox'); hide('multiResult'); show('loading');
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultCard').style.display = 'none';
+  document.getElementById('histSection').style.display = 'none';
+  document.getElementById('rightPanel').classList.remove('show');
+  show('loading');
 
   const sheetName = encodeURIComponent('1. 중점검사 LIST');
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
@@ -217,9 +314,7 @@ function search() {
       });
 
       hide('loading');
-
-      // 조회 시 변동검사 표 표시
-      document.getElementById('stdPanel').classList.add('show');
+      document.getElementById('rightPanel').classList.add('show');
 
       if (matched.length === 0) {
         showResult('normal', part, '양산 변동검사 AQL 등급', '', '');
@@ -235,44 +330,47 @@ function search() {
         'found', part,
         getVal(latest, COL_GRADE) || '-',
         getVal(latest, COL_ITEM),
-        getVal(latest, COL_DATE) ? '최신 ISSUE 날짜: ' + getVal(latest, COL_DATE) : ''
+        getVal(latest, COL_DATE) ? '최신 ISSUE: ' + getVal(latest, COL_DATE) : ''
       );
 
-      // 이력 전체 표시 (1건 포함 항상)
-      document.getElementById('multiCount').textContent = sorted.length;
-      const list = document.getElementById('multiList');
-      list.innerHTML = '';
+      // 전체 이력
+      const histList = document.getElementById('histList');
+      document.getElementById('histTitle').textContent = `전체 이력 ${sorted.length}건 — 최신순`;
+      histList.innerHTML = '';
       sorted.forEach(row => {
-        const g = getVal(row, COL_GRADE) || '-';
+        const g = getVal(row, COL_GRADE);
         const d = getVal(row, COL_DATE) || '-';
         const i = getVal(row, COL_ITEM);
+        const isAql = !g;
         const div = document.createElement('div');
-        div.className = 'multi-item';
+        div.className = 'hist-item';
         div.innerHTML = `
-          <div class="multi-item-top">
-            <span class="multi-item-date">${d}</span>
-            <span class="multi-item-grade">${g}</span>
+          <div class="hist-top">
+            <span class="hist-date">${d}</span>
+            <span class="hist-grade ${isAql ? 'aql' : ''}">${g || '양산 변동검사 AQL 등급'}</span>
           </div>
-          ${i ? `<div class="multi-item-desc">${i}</div>` : ''}
+          ${i ? `<div class="hist-desc">${i}</div>` : ''}
         `;
-        list.appendChild(div);
+        histList.appendChild(div);
       });
-      show('multiResult');
+      document.getElementById('histSection').style.display = 'block';
     })
     .catch(err => {
       hide('loading');
-      alert('구글 시트 조회 실패: ' + err.message + '\n공개 설정을 확인해주세요.');
+      alert('구글 시트 조회 실패: ' + err.message);
     });
 }
 
 function showResult(type, part, grade, item, date) {
-  const box = document.getElementById('resultBox');
-  box.className = 'result-box show ' + type;
-  document.getElementById('resultPart').textContent = part;
-  document.getElementById('resultGrade').textContent = grade;
-  document.getElementById('resultItem').textContent = item;
-  document.getElementById('resultItemRow').style.display = item ? 'block' : 'none';
-  document.getElementById('resultDate').textContent = date;
+  const card = document.getElementById('resultCard');
+  card.className = 'result-card ' + type;
+  card.style.display = 'block';
+  document.getElementById('rcGradeLabel').style.color = type === 'found' ? '#4a6a4a' : '#3a5a9a';
+  document.getElementById('rcPart').textContent = part;
+  document.getElementById('rcGrade').textContent = grade;
+  document.getElementById('rcItem').textContent = item;
+  document.getElementById('rcItemRow').style.display = item ? 'block' : 'none';
+  document.getElementById('rcDate').textContent = date;
 }
 
 function show(id) { document.getElementById(id).classList.add('show'); }
