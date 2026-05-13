@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>중점검사 조회</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    background: #1a1f2e;
+    color: #e0e6f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 16px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+
+  .header p {
+    font-size: 0.82rem;
+    color: #7a8aaa;
+    margin-top: 6px;
+  }
+
+  .card {
+    background: #242b3d;
+    border: 1px solid #2e3a52;
+    border-radius: 14px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: #1a1f2e;
+    border: 1.5px solid #3a4560;
+    border-radius: 8px;
+    color: #e0e6f0;
+    font-size: 1rem;
+    font-family: inherit;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: #4a8cff;
+  }
+
+  input[type="text"]::placeholder {
+    color: #4a5570;
+  }
+
+  button {
+    background: #4a8cff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    font-weight: 600;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: #2e6edc; }
+  button:active { background: #1a56c0; }
+
+  .result-box {
+    display: none;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .result-box.show { display: block; }
+
+  .result-box.found {
+    background: #1a2a1a;
+    border: 1.5px solid #2a6a2a;
+  }
+
+  .result-box.not-found {
+    background: #2a1a1a;
+    border: 1.5px solid #6a2a2a;
+  }
+
+  .result-box.normal {
+    background: #1a2234;
+    border: 1.5px solid #2a4a7a;
+  }
+
+  .result-label {
+    font-size: 0.78rem;
+    color: #7a8aaa;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .result-part {
+    font-size: 1rem;
+    color: #aabbdd;
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+
+  .result-grade {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .found .result-grade { color: #ff6b6b; }
+  .not-found .result-grade { color: #888; font-size: 1rem; font-weight: 400; }
+  .normal .result-grade { color: #4ac4ff; font-size: 1.1rem; }
+
+  .result-date {
+    font-size: 0.8rem;
+    color: #5a6a8a;
+    margin-top: 8px;
+  }
+
+  .loading {
+    display: none;
+    text-align: center;
+    color: #4a8cff;
+    font-size: 0.9rem;
+    padding: 16px 0;
+  }
+
+  .loading.show { display: block; }
+
+  .multi-result {
+    display: none;
+  }
+  .multi-result.show { display: block; }
+
+  .multi-title {
+    font-size: 0.8rem;
+    color: #7a8aaa;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .multi-item {
+    background: #1a2234;
+    border: 1px solid #2e3a52;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .multi-item-date { font-size: 0.8rem; color: #7a8aaa; }
+  .multi-item-grade { font-size: 1rem; font-weight: 700; color: #ff6b6b; }
+
+  .back-link {
+    margin-top: 24px;
+    font-size: 0.82rem;
+    color: #4a5570;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .back-link:hover { color: #4a8cff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔍 중점검사 조회</h1>
+  <p>품번을 입력하면 중점검사 등급을 확인합니다</p>
+</div>
+
+<div class="card">
+  <div class="input-row">
+    <input type="text" id="partInput" placeholder="품번 입력 (예: L28ELLN1EV_SK3)" autocomplete="off" />
+    <button onclick="search()">조회</button>
+  </div>
+
+  <div class="loading" id="loading">조회 중...</div>
+
+  <!-- 단일 결과 -->
+  <div class="result-box" id="resultBox">
+    <div class="result-label">조회 품번</div>
+    <div class="result-part" id="resultPart"></div>
+    <div class="result-label">중점검사 등급</div>
+    <div class="result-grade" id="resultGrade"></div>
+    <div class="result-date" id="resultDate"></div>
+  </div>
+
+  <!-- 복수 결과 (이력이 여러 건일 때) -->
+  <div class="multi-result" id="multiResult">
+    <div class="multi-title">전체 이력 (<span id="multiCount"></span>건) — 최신순</div>
+    <div id="multiList"></div>
+  </div>
+</div>
+
+<div style="margin-top:24px; text-align:center;">
+  <a href="https://wndnrzm-spec.github.io/-v2.2/" style="display:inline-block; background:#2e3a52; color:#aabbdd; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:0.9rem; border:1px solid #3a4a6a; font-family:'Malgun Gothic',sans-serif;">← 출하검증 도구로 돌아가기</a>
+</div>
+
+<script>
+const SHEET_ID = '1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc';
+// C열=품번(col 2), B열=날짜(col 1), G열=등급(col 6) — 0-index 기준
+const COL_PART = 2;   // C열
+const COL_DATE = 1;   // B열
+const COL_GRADE = 6;  // G열
+
+function search() {
+  const partRaw = document.getElementById('partInput').value.trim();
+  if (!partRaw) { alert('품번을 입력해주세요.'); return; }
+  const part = partRaw.toUpperCase();
+
+  hide('resultBox');
+  hide('multiResult');
+  show('loading');
+
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+  fetch(url)
+    .then(r => r.text())
+    .then(text => {
+      // 구글 시트 응답에서 JSON 추출
+      const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+      const rows = json.table.rows;
+
+      // C열(품번) 기준 필터
+      const matched = rows.filter(row => {
+        const cell = row.c[COL_PART];
+        return cell && cell.v && String(cell.v).toUpperCase().trim() === part;
+      });
+
+      hide('loading');
+
+      if (matched.length === 0) {
+        // 없음 → 양산 변동검사 AQL 등급
+        showResult('normal', part, '양산 변동검사 AQL 등급', '');
+        return;
+      }
+
+      if (matched.length === 1) {
+        const row = matched[0];
+        const grade = row.c[COL_GRADE] ? row.c[COL_GRADE].v : '-';
+        const date = row.c[COL_DATE] ? row.c[COL_DATE].v : '';
+        showResult('found', part, grade, date ? 'ISSUE 날짜: ' + date : '');
+        return;
+      }
+
+      // 여러 건 — 최신순 정렬 후 표시
+      const sorted = [...matched].sort((a, b) => {
+        const da = a.c[COL_DATE] ? a.c[COL_DATE].v : '';
+        const db = b.c[COL_DATE] ? b.c[COL_DATE].v : '';
+        return da > db ? -1 : 1;
+      });
+
+      // 최신 1건을 메인으로
+      const latest = sorted[0];
+      const latestGrade = latest.c[COL_GRADE] ? latest.c[COL_GRADE].v : '-';
+      const latestDate = latest.c[COL_DATE] ? latest.c[COL_DATE].v : '';
+      showResult('found', part, latestGrade, latestDate ? '최신 ISSUE 날짜: ' + latestDate : '');
+
+      // 전체 이력 표시
+      document.getElementById('multiCount').textContent = sorted.length;
+      const list = document.getElementById('multiList');
+      list.innerHTML = '';
+      sorted.forEach(row => {
+        const g = row.c[COL_GRADE] ? row.c[COL_GRADE].v : '-';
+        const d = row.c[COL_DATE] ? row.c[COL_DATE].v : '-';
+        const div = document.createElement('div');
+        div.className = 'multi-item';
+        div.innerHTML = `<span class="multi-item-date">${d}</span><span class="multi-item-grade">${g}</span>`;
+        list.appendChild(div);
+      });
+      show('multiResult');
+    })
+    .catch(err => {
+      hide('loading');
+      alert('구글 시트 조회 실패: ' + err.message + '\n공개 설정을 확인해주세요.');
+    });
+}
+
+function showResult(type, part, grade, date) {
+  const box = document.getElementById('resultBox');
+  box.className = 'result-box show ' + type;
+  document.getElementById('resultPart').textContent = part;
+  document.getElementById('resultGrade').textContent = grade;
+  document.getElementById('resultDate').textContent = date;
+}
+
+function show(id) { document.getElementById(id).classList.add('show'); }
+function hide(id) { document.getElementById(id).classList.remove('show'); }
+
+// 엔터키로도 조회
+document.getElementById('partInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') search();
+});
+</script>
+</body>
+</html>
