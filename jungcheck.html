@@ -86,8 +86,8 @@ input[type="text"]::placeholder { color: #3a4560; }
 
 /* 좌측 결과 패널 */
 .left {
-  flex: 1;
-  min-width: 0;
+  width: 50%;
+  flex-shrink: 0;
   padding: 24px 28px;
   overflow-y: auto;
   border-right: 1px solid #1e2535;
@@ -162,7 +162,7 @@ input[type="text"]::placeholder { color: #3a4560; }
   overflow-y: auto;
   display: none;
 }
-.right.show { display: block; }
+.right.show { display: flex; flex-direction: column; }
 
 .std-title {
   font-size: 0.82rem; font-weight: 700; color: #5a8adf;
