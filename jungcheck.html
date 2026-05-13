@@ -213,6 +213,10 @@
     <div class="result-part" id="resultPart"></div>
     <div class="result-label">중점검사 등급</div>
     <div class="result-grade" id="resultGrade"></div>
+    <div id="resultItemRow" style="display:none; margin-top:12px;">
+      <div class="result-label">중점검사 항목</div>
+      <div id="resultItem" style="font-size:0.95rem; color:#e0e6f0; background:#1a1f2e; border-radius:8px; padding:10px 12px; margin-top:4px; line-height:1.5; text-align:left; white-space:pre-wrap;"></div>
+    </div>
     <div class="result-date" id="resultDate"></div>
   </div>
 
@@ -232,6 +236,7 @@ const SHEET_ID = '1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc';
 // C열=품번(col 2), B열=날짜(col 1), G열=등급(col 6) — 0-index 기준
 const COL_PART = 2;   // C열
 const COL_DATE = 1;   // B열
+const COL_ITEM = 4;   // E열 (중점검사 항목)
 const COL_GRADE = 6;  // G열
 
 function search() {
@@ -262,7 +267,7 @@ function search() {
 
       if (matched.length === 0) {
         // 없음 → 양산 변동검사 AQL 등급
-        showResult('normal', part, '양산 변동검사 AQL 등급', '');
+        showResult('normal', part, '양산 변동검사 AQL 등급', '', '');
         return;
       }
 
@@ -270,7 +275,8 @@ function search() {
         const row = matched[0];
         const grade = row.c[COL_GRADE] ? row.c[COL_GRADE].v : '-';
         const date = row.c[COL_DATE] ? row.c[COL_DATE].v : '';
-        showResult('found', part, grade, date ? 'ISSUE 날짜: ' + date : '');
+        const item = row.c[COL_ITEM] ? row.c[COL_ITEM].v : '';
+        showResult('found', part, grade, item, date ? 'ISSUE 날짜: ' + date : '');
         return;
       }
 
@@ -285,7 +291,8 @@ function search() {
       const latest = sorted[0];
       const latestGrade = latest.c[COL_GRADE] ? latest.c[COL_GRADE].v : '-';
       const latestDate = latest.c[COL_DATE] ? latest.c[COL_DATE].v : '';
-      showResult('found', part, latestGrade, latestDate ? '최신 ISSUE 날짜: ' + latestDate : '');
+      const latestItem = latest.c[COL_ITEM] ? latest.c[COL_ITEM].v : '';
+      showResult('found', part, latestGrade, latestItem, latestDate ? '최신 ISSUE 날짜: ' + latestDate : '');
 
       // 전체 이력 표시
       document.getElementById('multiCount').textContent = sorted.length;
@@ -307,11 +314,13 @@ function search() {
     });
 }
 
-function showResult(type, part, grade, date) {
+function showResult(type, part, grade, item, date) {
   const box = document.getElementById('resultBox');
   box.className = 'result-box show ' + type;
   document.getElementById('resultPart').textContent = part;
   document.getElementById('resultGrade').textContent = grade;
+  document.getElementById('resultItem').textContent = item ? item : '';
+  document.getElementById('resultItemRow').style.display = item ? 'block' : 'none';
   document.getElementById('resultDate').textContent = date;
 }
 
