@@ -257,10 +257,11 @@ function search() {
       const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
       const rows = json.table.rows;
 
-      // C열(품번) 기준 필터
-      const matched = rows.filter(row => {
+      // 헤더행 제외 후 C열(품번) 기준 필터
+      const dataRows = rows.filter(row => row.c[COL_PART] && row.c[COL_PART].v);
+      const matched = dataRows.filter(row => {
         const cell = row.c[COL_PART];
-        return cell && cell.v && String(cell.v).toUpperCase().trim() === part;
+        return String(cell.v).toUpperCase().trim() === part;
       });
 
       hide('loading');
@@ -273,25 +274,25 @@ function search() {
 
       if (matched.length === 1) {
         const row = matched[0];
-        const grade = row.c[COL_GRADE] ? row.c[COL_GRADE].v : '-';
-        const date = row.c[COL_DATE] ? row.c[COL_DATE].v : '';
-        const item = row.c[COL_ITEM] ? row.c[COL_ITEM].v : '';
+        const grade = getVal(row, COL_GRADE) || '-';
+        const date = getVal(row, COL_DATE);
+        const item = getVal(row, COL_ITEM);
         showResult('found', part, grade, item, date ? 'ISSUE 날짜: ' + date : '');
         return;
       }
 
       // 여러 건 — 최신순 정렬 후 표시
       const sorted = [...matched].sort((a, b) => {
-        const da = a.c[COL_DATE] ? a.c[COL_DATE].v : '';
-        const db = b.c[COL_DATE] ? b.c[COL_DATE].v : '';
+        const da = getVal(a, COL_DATE);
+        const db = getVal(b, COL_DATE);
         return da > db ? -1 : 1;
       });
 
       // 최신 1건을 메인으로
       const latest = sorted[0];
-      const latestGrade = latest.c[COL_GRADE] ? latest.c[COL_GRADE].v : '-';
-      const latestDate = latest.c[COL_DATE] ? latest.c[COL_DATE].v : '';
-      const latestItem = latest.c[COL_ITEM] ? latest.c[COL_ITEM].v : '';
+      const latestGrade = getVal(latest, COL_GRADE) || '-';
+      const latestDate = getVal(latest, COL_DATE);
+      const latestItem = getVal(latest, COL_ITEM);
       showResult('found', part, latestGrade, latestItem, latestDate ? '최신 ISSUE 날짜: ' + latestDate : '');
 
       // 전체 이력 표시
@@ -299,8 +300,9 @@ function search() {
       const list = document.getElementById('multiList');
       list.innerHTML = '';
       sorted.forEach(row => {
-        const g = row.c[COL_GRADE] ? row.c[COL_GRADE].v : '-';
-        const d = row.c[COL_DATE] ? row.c[COL_DATE].v : '-';
+        const g = getVal(row, COL_GRADE) || '-';
+        const d = getVal(row, COL_DATE) || '-';
+        const i = getVal(row, COL_ITEM);
         const div = document.createElement('div');
         div.className = 'multi-item';
         div.innerHTML = `<span class="multi-item-date">${d}</span><span class="multi-item-grade">${g}</span>`;
@@ -312,6 +314,11 @@ function search() {
       hide('loading');
       alert('구글 시트 조회 실패: ' + err.message + '\n공개 설정을 확인해주세요.');
     });
+}
+
+function getVal(row, idx) {
+  if (!row.c[idx]) return '';
+  return row.c[idx].v !== null && row.c[idx].v !== undefined ? String(row.c[idx].v) : (row.c[idx].f || '');
 }
 
 function showResult(type, part, grade, item, date) {
