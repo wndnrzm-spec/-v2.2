@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>품질 관리 시스템 V2.3</title>
+<title>품질 관리 시스템 V2.2</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -28,7 +28,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 /* 모드 버튼 */
-.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.mode-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
 .mode-btn{padding:16px 8px;border-radius:var(--r);border:1.5px solid var(--bd2);background:var(--sf);color:var(--tx2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:80px}
 .mode-btn .ico{font-size:22px}
 .mode-btn.active-ship{border-color:var(--green);background:var(--green);color:#000}
@@ -143,8 +143,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3</div>
-      <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 불량 이력 조회</div>
+      <div class="hdr-t">품질 관리 시스템 V2.2</div>
+      <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사</div>
     </div>
   </div>
   <div class="sdot"><div class="dot"></div><span id="hdr-date"></span>&nbsp;READY</div>
@@ -158,9 +158,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <button id="mode-btn-iqc" class="mode-btn" onclick="switchMode('iqc')">
     <span class="ico">&#x1F50D;</span>IQC 중점검사
   </button>
-  <button class="mode-btn" onclick="switchMode('defect')" style="border-color:var(--amber);color:var(--amber)">
-    <span class="ico">&#x26A0;</span>출고 후 불량 이력 조회
-  </button>
+  
 </div>
 
 <!-- 통계 바 -->
@@ -276,19 +274,6 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 </div>
 
 <!-- 출고 후 불량 이력 패널 -->
-<div class="panel" id="panel-defect">
-  <div class="sl2" style="margin-bottom:10px">출고 후 불량 이력 조회</div>
-  <div class="info-box">SET SN을 입력하면 구글 시트에서 불량 이력을 조회합니다.</div>
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <input type="text" id="defect-sn-input" placeholder="SET SN 입력 (예: 643EELT53D0912)"
-      style="flex:1;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:14px;font-weight:600;padding:11px 14px;outline:none;transition:border-color .15s"
-      onkeydown="if(event.key==='Enter')searchDefect()"
-      onfocus="this.style.borderColor='var(--amber)'"
-      onblur="this.style.borderColor='var(--bd2)'">
-    <button class="btn" style="padding:11px 20px;border-color:var(--amber);background:var(--ad);color:var(--amber)" onclick="searchDefect()">조회</button>
-  </div>
-  <div id="defect-result"><div class="empty">SET SN을 입력하고 조회해 주세요</div></div>
-</div>
 
 
 </div>
@@ -717,17 +702,16 @@ function switchMode(mode){
   currentMode=mode;
   var shipTabs=document.getElementById('ship-tabs');
   var statBar=document.getElementById('stat-bar');
-  var allPanels=['setup','scan','log','iqc','defect'];
+  var allPanels=['setup','scan','log','iqc'];
   var btnShip=document.getElementById('mode-btn-ship');
   var btnIqc=document.getElementById('mode-btn-iqc');
-  var btnDef=document.getElementById('mode-btn-defect');
+  
   allPanels.forEach(function(p){
     var el=document.getElementById('panel-'+p);
     if(el){el.classList.remove('active');el.style.display='';}
   });
   if(btnShip) btnShip.className='mode-btn';
   if(btnIqc)  btnIqc.className='mode-btn';
-  if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='var(--bd2)';btnDef.style.background='var(--sf)';btnDef.style.color='var(--tx2)';}
   if(mode==='ship'){
     if(btnShip) btnShip.className='mode-btn active-ship';
     if(shipTabs) shipTabs.style.display='flex';
@@ -746,8 +730,6 @@ function switchMode(mode){
     if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='var(--amber)';btnDef.style.background='var(--ad)';btnDef.style.color='var(--amber)';}
     if(shipTabs) shipTabs.style.display='none';
     if(statBar) statBar.style.display='none';
-    var pd=document.getElementById('panel-defect');
-    if(pd) pd.classList.add('active');
     setTimeout(function(){var inp=document.getElementById('defect-sn-input');if(inp)inp.focus();},50);
   }
 }
@@ -838,70 +820,6 @@ function copyIQCPath(){
   var path='\\\\192.168.10.195\\iqc\\IQC기준서\\'+pn+'\\';
   if(navigator.clipboard)navigator.clipboard.writeText(path).then(function(){alert('경로 복사 완료! 탐색기 주소츦0에 Ctrl+V 하세요');});
   else prompt('복사(Ctrl+C):',path);
-}
-
-var DEFECT_SHEET_ID='1PUg5FhaWq6N87FE1kVw72KUQ_y3tE6gCz6fuVe4DlW8';
-function searchDefect(){
-  var sn=document.getElementById('defect-sn-input').value.trim().toUpperCase();
-  if(!sn){alert('SET SN을 입력해 주세요');return;}
-  var re=document.getElementById('defect-result');
-  re.innerHTML='<div class="empty">조회 중...</div>';
-  var cb='defCb'+Date.now();
-  var url='https://docs.google.com/spreadsheets/d/'+DEFECT_SHEET_ID+'/gviz/tq?tqx=out:json&callback='+cb;
-  window[cb]=function(data){
-    var old=document.getElementById('def-scr');if(old)old.remove();delete window[cb];
-    var rows=data.table.rows;var cols=data.table.cols;
-    var snIdx=0;
-    for(var ci=0;ci<cols.length;ci++){
-      var lbl=(cols[ci].label||'').replace(/ /g,'').toUpperCase();
-      if(lbl.indexOf('SETSN')>=0){snIdx=ci;break;}
-    }
-    var found=null;
-    for(var i=0;i<rows.length;i++){
-      var cell=rows[i].c[snIdx];
-      var v=cell&&cell.v!=null?String(cell.v).trim().toUpperCase():'';
-      if(v===sn){found=rows[i];break;}
-    }
-    if(!found){
-      re.innerHTML='<div style="background:var(--rd);border:1.5px solid var(--red);border-radius:var(--r);padding:16px;text-align:center">'
-        +'<div style="font-size:14px;color:var(--red);font-weight:700;margin-bottom:6px">❌ 조회 결과 없음</div>'
-        +'<div style="font-size:13px;color:var(--tx2)">SET SN <b style="color:var(--tx)">'+sn+'</b>에 해당하는 이력이 없습니다</div>'
-        +'</div>';
-      return;
-    }
-    function getVal(key){
-      for(var ci=0;ci<cols.length;ci++){
-        var lbl=(cols[ci].label||'').toUpperCase();
-        if(lbl.indexOf(key.toUpperCase())>=0){var c=found.c[ci];return c&&c.v!=null?String(c.v).trim():'-';}
-      }
-      return '-';
-    }
-    var fields=[
-      {label:'PANEL SN',key:'PANEL SN',color:'var(--blue)'},
-      {label:'OQC 검사',key:'OQC',color:'var(--amber)'},
-      {label:'수리 이력',key:'수리',color:'var(--green)'},
-      {label:'생산 날짜',key:'생산',color:'var(--tx)'},
-      {label:'외주 수리 이력',key:'외주 수리',color:'var(--red)'},
-      {label:'외주 Lami 특이사항',key:'Lami',color:'var(--tx)'},
-      {label:'외주 식각 특이사항',key:'식각',color:'var(--tx)'},
-      {label:'합착 특이사항',key:'합착 특',color:'var(--tx)'},
-      {label:'Panel 보관 기간',key:'보관',color:'var(--tx)'},
-      {label:'합착 TEST 이력',key:'TEST',color:'var(--tx)'},
-    ];
-    var html='<div style="background:var(--gd);border:1.5px solid var(--green);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">'
-      +'<span style="color:var(--green);font-size:16px">✓</span>'
-      +'<span style="font-size:13px;color:var(--tx)">SET SN: <b style="font-family:Consolas,monospace;color:var(--green)">'+sn+'</b> 조회 완료</span>'
-      +'</div><div class="defect-grid">';
-    fields.forEach(function(f){
-      html+='<div class="dc"><div class="dc-l">'+f.label+'</div><div class="dc-v" style="color:'+f.color+'">'+getVal(f.key)+'</div></div>';
-    });
-    html+='</div><div style="padding:8px 12px;border-radius:var(--r);border:1px solid var(--amber);background:var(--ad);font-size:11px;color:var(--amber)">'
-      +'⚠ 오류가 발생할 수 있어서 한개정도는 기존과 동일하게 확인해서 교차 검증하세요</div>';
-    re.innerHTML=html;
-  };
-  var scr=document.createElement('script');scr.id='def-scr';
-  scr.onerror=function(){re.innerHTML='<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">⚠ 구글 시트 조회 실패</div>';delete window[cb];};
-  scr.src=url;document.head.appendChild(scr);
 }
 
 document.addEventListener('keydown',function(e){
