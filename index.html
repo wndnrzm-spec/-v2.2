@@ -889,63 +889,61 @@ function testDefConn(){
   var dot=document.getElementById('def-conn-dot');
   var sta=document.getElementById('def-conn-status');
   dot.className='conn-dot checking';sta.textContent='\ud14c\uc2a4\ud2b8 \uc911...';
-  fetch('https://docs.google.com/spreadsheets/d/'+DEFECT_SHEET_ID+'/gviz/tq?tqx=out:json')
-    .then(function(r){return r.text();}).then(function(text){
-      var json=JSON.parse(text.substring(text.indexOf('{'),text.lastIndexOf('}')+1));
-      dot.className='conn-dot ok';sta.textContent='\uc5f0\uacb0 \uc131\uacf5 \u2014 '+json.table.rows.length+'\uac74';
-    }).catch(function(err){dot.className='conn-dot ng';sta.textContent='\uc2e4\ud328: '+err.message;});
+  var WEBAPP_URL='__WEBAPP_URL__';
+  if(WEBAPP_URL==='__WEBAPP_URL__'){
+    dot.className='conn-dot ng';
+    sta.textContent='Apps Script URL \ubbf8\uc124\uc815';
+    return;
+  }
+  fetch(WEBAPP_URL+'?sn=TEST')
+    .then(function(r){return r.json();})
+    .then(function(){dot.className='conn-dot ok';sta.textContent='\uc5f0\uacb0 \uc131\uacf5';})
+    .catch(function(err){dot.className='conn-dot ng';sta.textContent='\uc2e4\ud328: '+err.message;});
 }
+
 function searchDefect(){
   var sn=document.getElementById('defect-sn-input').value.trim().toUpperCase();
   if(!sn){alert('SET SN\uc744 \uc785\ub825\ud574 \uc8fc\uc138\uc694');return;}
   var re=document.getElementById('defect-result');
   re.innerHTML='<div class="empty">\uc870\ud68c \uc911...</div>';
-  fetch('https://docs.google.com/spreadsheets/d/'+DEFECT_SHEET_ID+'/gviz/tq?tqx=out:json')
-    .then(function(r){return r.text();}).then(function(text){
-      var json=JSON.parse(text.substring(text.indexOf('{'),text.lastIndexOf('}')+1));
-      var rows=json.table.rows;var cols=json.table.cols;
-      var snIdx=0;
-      for(var ci=0;ci<cols.length;ci++){
-        if((cols[ci].label||'').replace(/ /g,'').toUpperCase().indexOf('SETSN')>=0){snIdx=ci;break;}
-      }
-      var found=null;
-      for(var i=0;i<rows.length;i++){
-        var cell=rows[i].c[snIdx];
-        if(cell&&cell.v!=null&&String(cell.v).trim().toUpperCase()===sn){found=rows[i];break;}
-      }
-      if(!found){
-        re.innerHTML='<div style="background:var(--rd);border:1.5px solid var(--red);border-radius:var(--r);padding:16px;text-align:center">'
-          +'<div style="font-size:14px;color:var(--red);font-weight:700;margin-bottom:6px">\u274c \uc870\ud68c \uacb0\uacfc \uc5c6\uc74c</div>'
-          +'<div style="font-size:13px;color:var(--tx2)">SET SN <b style="color:var(--tx)">'+sn+'</b>\uc5d0 \ud574\ub2f9\ud558\ub294 \uc774\ub825\uc774 \uc5c6\uc2b5\ub2c8\ub2e4</div></div>';
+
+  var WEBAPP_URL='__WEBAPP_URL__';
+  if(WEBAPP_URL==='__WEBAPP_URL__'){
+    re.innerHTML='<div style="color:var(--red);font-size:13px;padding:16px">\u26a0 Apps Script \uc6f9\uc571 URL\uc744 \uc124\uc815\ud574 \uc8fc\uc138\uc694.<br><span style="font-size:11px;color:var(--tx2)">\uc5d0\ub94c\ud130\uc5d0\uc11c DEFECT_WEBAPP_URL \ubcc0\uc218 \uc218\uc815 \ud544\uc694</span></div>';
+    return;
+  }
+
+  fetch(WEBAPP_URL+'?sn='+encodeURIComponent(sn))
+    .then(function(r){return r.json();})
+    .then(function(json){
+      if(json.error){
+        re.innerHTML='<div style="color:var(--red);font-size:13px;padding:16px">\u26a0 '+json.error+'</div>';
         return;
       }
-      function getVal(key){
-        for(var ci=0;ci<cols.length;ci++){if((cols[ci].label||'').toUpperCase().indexOf(key.toUpperCase())>=0){var c=found.c[ci];return c&&c.v!=null?String(c.v).trim():'-';}}return '-';
+      var data=json.data;
+      var keys=Object.keys(data);
+      if(!keys.length){
+        re.innerHTML='<div style="background:var(--rd);border:1.5px solid var(--red);border-radius:var(--r);padding:16px;text-align:center">'
+          +'<div style="font-size:14px;color:var(--red);font-weight:700">\u274c \uc870\ud68c \uacb0\uacfc \uc5c6\uc74c</div>'
+          +'<div style="font-size:13px;color:var(--tx2);margin-top:6px">SET SN <b>'+sn+'</b>\uc5d0 \ud574\ub2f9\ud558\ub294 \uc774\ub825\uc774 \uc5c6\uc2b5\ub2c8\ub2e4</div></div>';
+        return;
       }
-      var fields=[
-        {label:'PANEL SN',key:'PANEL SN',color:'var(--blue)'},
-        {label:'OQC \uac80\uc0ac',key:'OQC',color:'var(--amber)'},
-        {label:'\uc218\ub9ac \uc774\ub825',key:'\uc218\ub9ac',color:'var(--green)'},
-        {label:'\uc0dd\uc0b0 \ub0a0\uc9dc',key:'\uc0dd\uc0b0',color:'var(--tx)'},
-        {label:'\uc678\uc8fc \uc218\ub9ac \uc774\ub825',key:'\uc678\uc8fc \uc218\ub9ac',color:'var(--red)'},
-        {label:'\uc678\uc8fc Lami',key:'Lami',color:'var(--tx)'},
-        {label:'\uc678\uc8fc \uc2dd\uac01',key:'\uc2dd\uac01',color:'var(--tx)'},
-        {label:'\ud569\ucc29 \ud2b9\uc774',key:'\ud569\ucc29 \ud2b9',color:'var(--tx)'},
-        {label:'Panel \ubcf4\uad00',key:'\ubcf4\uad00',color:'var(--tx)'},
-        {label:'\ud569\ucc29 TEST',key:'TEST',color:'var(--tx)'},
-      ];
       var html='<div style="background:var(--gd);border:1.5px solid var(--green);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">'
         +'<span style="color:var(--green);font-size:16px">\u2713</span>'
         +'<span style="font-size:13px;color:var(--tx)">SET SN: <b style="font-family:Consolas,monospace;color:var(--green)">'+sn+'</b> \uc870\ud68c \uc644\ub8cc</span></div>'
         +'<div class="defect-grid">';
-      fields.forEach(function(f){
-        html+='<div class="dc"><div class="dc-l">'+f.label+'</div><div class="dc-v" style="color:'+f.color+'">'+getVal(f.key)+'</div></div>';
+      keys.forEach(function(k){
+        html+='<div class="dc"><div class="dc-l">'+k+'</div><div class="dc-v" style="color:var(--tx)">'+( data[k]||'-')+'</div></div>';
       });
       html+='</div><div style="padding:8px 12px;border-radius:var(--r);border:1px solid var(--amber);background:var(--ad);font-size:11px;color:var(--amber)">'
         +'\u26a0 \uc624\ub958\uac00 \ubc1c\uc0dd\ud560 \uc218 \uc788\uc5b4\uc11c \ud55c\uac1c\uc815\ub3c4\ub294 \uae30\uc874\uacfc \ub3d9\uc77c\ud558\uac8c \ud655\uc778\ud574\uc11c \uad50\ucc28 \uac80\uc99d\ud558\uc138\uc694</div>';
       re.innerHTML=html;
-    }).catch(function(err){re.innerHTML='<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">\u26a0 \uc870\ud68c \uc2e4\ud328: '+err.message+'</div>';});
+    })
+    .catch(function(err){
+      re.innerHTML='<div style="color:var(--red);font-size:13px;padding:20px;text-align:center">\u26a0 \uc870\ud68c \uc2e4\ud328: '+err.message+'</div>';
+    });
 }
+
 function handlePhotoScan(input){
   var files=Array.from(input.files);if(!files.length)return;
   document.getElementById('photo-status').textContent='\ubd84\uc11d \uc911...';
