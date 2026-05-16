@@ -889,8 +889,8 @@ function testDefConn(){
   var dot=document.getElementById('def-conn-dot');
   var sta=document.getElementById('def-conn-status');
   dot.className='conn-dot checking';sta.textContent='\ud14c\uc2a4\ud2b8 \uc911...';
-  var WEBAPP_URL='__WEBAPP_URL__';
-  if(WEBAPP_URL==='__WEBAPP_URL__'){
+  var WEBAPP_URL='https://script.google.com/macros/s/AKfycbydUX5Zgxf02WPtUmGPRoyz_Ih4MQaJV56tatONLTxDEPq8ilVtU6KWqGlXHIWuludGLA/exec';
+  if(WEBAPP_URL==='https://script.google.com/macros/s/AKfycbydUX5Zgxf02WPtUmGPRoyz_Ih4MQaJV56tatONLTxDEPq8ilVtU6KWqGlXHIWuludGLA/exec'){
     dot.className='conn-dot ng';
     sta.textContent='Apps Script URL \ubbf8\uc124\uc815';
     return;
@@ -907,8 +907,8 @@ function searchDefect(){
   var re=document.getElementById('defect-result');
   re.innerHTML='<div class="empty">\uc870\ud68c \uc911...</div>';
 
-  var WEBAPP_URL='__WEBAPP_URL__';
-  if(WEBAPP_URL==='__WEBAPP_URL__'){
+  var WEBAPP_URL='https://script.google.com/macros/s/AKfycbydUX5Zgxf02WPtUmGPRoyz_Ih4MQaJV56tatONLTxDEPq8ilVtU6KWqGlXHIWuludGLA/exec';
+  if(WEBAPP_URL==='https://script.google.com/macros/s/AKfycbydUX5Zgxf02WPtUmGPRoyz_Ih4MQaJV56tatONLTxDEPq8ilVtU6KWqGlXHIWuludGLA/exec'){
     re.innerHTML='<div style="color:var(--red);font-size:13px;padding:16px">\u26a0 Apps Script \uc6f9\uc571 URL\uc744 \uc124\uc815\ud574 \uc8fc\uc138\uc694.<br><span style="font-size:11px;color:var(--tx2)">\uc5d0\ub94c\ud130\uc5d0\uc11c DEFECT_WEBAPP_URL \ubcc0\uc218 \uc218\uc815 \ud544\uc694</span></div>';
     return;
   }
