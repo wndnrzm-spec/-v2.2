@@ -92,6 +92,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .rbadge.ok{background:var(--green);color:#000}.rbadge.ng{background:var(--red);color:#fff}.rbadge.dup{background:var(--purple);color:#000}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
 .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px}
+.sn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .ci{background:var(--sf2);border-radius:6px;padding:9px 10px}
 .ci-l{font-size:10px;color:var(--tx2);margin-bottom:3px}
 .ci-v{font-size:12px;font-weight:600;word-break:break-all}
@@ -477,7 +478,7 @@ function clearTable(){
   document.getElementById('plan-tbody').innerHTML='';rowSeq=0;
   for(var i=0;i<3;i++)addRow();
   planData=[];document.getElementById('plan-status').textContent='등록 없음';
-  document.getElementById('plan-preview').innerHTML='<div class="empty-state" style="padding:20px">등록 없음</div>';
+  document.getElementById('plan-preview').innerHTML='<div class="empty" style="padding:20px">등록 없음</div>';
 }
 function applyTable(){
   var rows=document.getElementById('plan-tbody').querySelectorAll('tr');
@@ -493,7 +494,7 @@ function applyTable(){
   navTo('scan');
 }
 function renderPlanPreview(){
-  if(!planData.length){document.getElementById('plan-preview').innerHTML='<div class="empty-state" style="padding:20px">등록 없음</div>';return;}
+  if(!planData.length){document.getElementById('plan-preview').innerHTML='<div class="empty" style="padding:20px">등록 없음</div>';return;}
   var h='<div style="overflow-x:auto;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--sf2)"><th style="padding:7px 8px;color:var(--tx2);text-align:left;border-bottom:1px solid var(--bd)">품번</th><th style="padding:7px 8px;color:var(--tx2);text-align:center;border-bottom:1px solid var(--bd)">계획</th><th style="padding:7px 8px;color:var(--tx2);text-align:center;border-bottom:1px solid var(--bd)">스캔</th><th style="padding:7px 8px;color:var(--tx2);text-align:center;border-bottom:1px solid var(--bd)">상태</th></tr></thead><tbody>';
   planData.forEach(function(p){
     var sc=scanLog.filter(function(l){return l.partNo===p.partNo&&l.result==='OK';}).length;
@@ -662,18 +663,24 @@ function renderResult(e){
 
 
 function renderLog(){
-  if(!scanLog.length){document.getElementById('log-area').innerHTML='<div class="empty-state">이력 없음</div>';return;}
-  var h='';
+  if(!scanLog.length){document.getElementById('log-area').innerHTML='<div class="empty">이력 없음</div>';return;}
+  var h='<table class="log-tbl"><thead><tr><th>시간</th><th>스캔 SN</th><th>MES SN</th><th>품번</th><th>모델명</th><th>결과</th></tr></thead><tbody>';
   scanLog.forEach(function(l){
-    var cls=l.result==='OK'?'ok-i':l.result==='DUP'?'dup-i':'ng-i';
-    var badgeCls=l.result==='OK'?'ok':l.result==='DUP'?'dup':'ng';
-    h+='<div class="log-item '+cls+'">'
-      +'<div class="log-row"><span class="log-sn">'+l.snScan+'</span><span class="log-badge '+badgeCls+'">'+(l.result==='OK'?'OK':'NG')+'</span></div>'
-      +'<div class="log-meta">'+l.time+(l.partNo?' · '+l.partNo:'')+(l.modelName&&l.modelName!=='-'?' · '+l.modelName:'')+'</div>'
-      +(l.snMes?'<div class="log-meta">MES: '+l.snMes+'</div>':'')
-      +(l.issues.length?'<div class="log-issue">⚠ '+l.issues[0]+'</div>':'')
-      +'</div>';
+    var cls=l.result==='OK'?'ok':l.result==='DUP'?'dup':'ng';
+    var badge=l.result==='OK'?'<span class="badge ok">OK</span>':'<span class="badge '+(l.result==='DUP'?'dup':'ng')+'">NG</span>';
+    h+='<tr style="border-left:3px solid '+(l.result==='OK'?'var(--green)':l.result==='DUP'?'var(--purple)':'var(--red)')+'">'
+      +'<td style="white-space:nowrap;font-size:11px">'+l.time+'</td>'
+      +'<td style="font-size:11px;font-family:Consolas,monospace">'+l.snScan+'</td>'
+      +'<td style="font-size:11px;color:var(--tx2)">'+(l.snMes||'—')+'</td>'
+      +'<td>'+l.partNo+'</td>'
+      +'<td>'+(l.modelName||'-')+'</td>'
+      +'<td>'+badge+'</td>'
+      +'</tr>';
+    if(l.issues.length){
+      h+='<tr><td colspan="6" style="font-size:11px;color:var(--red);padding:4px 10px;background:var(--rd)">⚠ '+l.issues.join(' / ')+'</td></tr>';
+    }
   });
+  h+='</tbody></table>';
   document.getElementById('log-area').innerHTML=h;
 }
 function exportXlsx(){
