@@ -903,26 +903,170 @@ function loadChecklistTypes(){
     }).catch(function(){});
 }
 
+var _checklistDirHandle = null;
+var _checklistFiles = [];
+
 function searchChecklist(pn){
   if(!pn) return;
+  var area=document.getElementById('iqc-checklist-result');
+  if(!area) return;
+  area.innerHTML='<div style="font-size:12px;color:var(--tx2)">검사지도서 조회 중...</div>';
+
   fetch(CHECKLIST_URL+'?action=search&pn='+encodeURIComponent(pn))
     .then(function(r){return r.json();})
     .then(function(json){
-      var area=document.getElementById('iqc-checklist-result');
-      if(!area) return;
       if(!json.files||json.files.length===0){
-        alert('일치하는 검사지도서가 없습니다.');
         area.innerHTML='';
+        alert('일치하는 검사지도서가 없습니다.');
         return;
       }
-      var html='<div style="margin-top:10px;background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px">'
-        +'<div style="font-size:11px;color:var(--tx2);margin-bottom:8px">검사지도서 파일명</div>';
-      json.files.forEach(function(f){
-        html+='<div style="font-size:13px;color:var(--blue);padding:4px 0;border-bottom:1px solid var(--bd)">📄 '+f+'</div>';
-      });
-      html+='</div>';
-      area.innerHTML=html;
+      // 파일명 저장 후 폴더 지정 UI 표시
+      _checklistFiles = json.files;
+      showFolderSelectUI(json.files);
+    }).catch(function(err){
+      area.innerHTML='<div style="color:var(--red);font-size:12px">조회 실패: '+err.message+'</div>';
+    });
+}
+
+function showFolderSelectUI(files){
+  var area=document.getElementById('iqc-checklist-result');
+  var alreadySelected = _checklistDirHandle !== null;
+
+  var html='<div style="margin-top:12px;background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r);padding:14px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  html+='<div style="font-size:12px;color:var(--tx2)">검사지도서 폴더</div>';
+  html+='<button class="btn btn-b" onclick="selectChecklistFolder()" style="padding:6px 14px;font-size:12px">';
+  html+= alreadySelected ? '📂 폴더 변경' : '📂 폴더 지정';
+  html+='</button></div>';
+
+  if(alreadySelected){
+    html+='<div id="checklist-file-list"><div style="font-size:12px;color:var(--tx2)">파일 탐색 중...</div></div>';
+  } else {
+    html+='<div id="checklist-file-list"><div style="font-size:12px;color:var(--tx2)">폴더를 지정하면 파일을 찾아드립니다.</div></div>';
+  }
+  html+='</div>';
+  area.innerHTML=html;
+
+  // 이미 폴더 지정됐으면 바로 파일 탐색
+  if(alreadySelected){
+    findFilesInFolder(files);
+  }
+}
+
+function selectChecklistFolder(){
+  if(!window.showDirectoryPicker){
+    alert('이 브라우저는 폴더 선택을 지원하지 않습니다. Chrome을 사용해 주세요.');
+    return;
+  }
+  window.showDirectoryPicker({mode:'read'})
+    .then(function(handle){
+      _checklistDirHandle = handle;
+      findFilesInFolder(_checklistFiles);
     }).catch(function(){});
+}
+
+function findFilesInFolder(targetFiles){
+  if(!_checklistDirHandle || !targetFiles || !targetFiles.length) return;
+  var listArea = document.getElementById('checklist-file-list');
+  if(listArea) listArea.innerHTML='<div style="font-size:12px;color:var(--tx2)">파일 탐색 중...</div>';
+
+  var found=[], notFound=[];
+  var entries=[];
+
+  // 폴더 내 파일 목록 수집
+  function collectEntries(dirHandle, prefix){
+    return dirHandle.values ? 
+      Array.from(dirHandle.values()) : 
+      new Promise(function(resolve){
+        var arr=[];
+        var iter=dirHandle.entries();
+        function next(){
+          iter.next().then(function(r){
+            if(r.done){resolve(arr);return;}
+            arr.push(r.value);next();
+          });
+        }
+        next();
+      });
+  }
+
+  var allFiles={};
+  var iter = _checklistDirHandle.entries();
+  function readNext(){
+    iter.next().then(function(r){
+      if(r.done){
+        // 수집 완료 → 매칭
+        targetFiles.forEach(function(fname){
+          var matched=null;
+          Object.keys(allFiles).forEach(function(k){
+            if(k.toLowerCase()===fname.toLowerCase()) matched=allFiles[k];
+          });
+          if(matched) found.push({name:fname, handle:matched});
+          else notFound.push(fname);
+        });
+        renderFoundFiles(found, notFound);
+        return;
+      }
+      var name=r.value[0], handle=r.value[1];
+      if(handle.kind==='file') allFiles[name]=handle;
+      readNext();
+    });
+  }
+  readNext();
+}
+
+function renderFoundFiles(found, notFound){
+  var listArea=document.getElementById('checklist-file-list');
+  if(!listArea) return;
+  var html='';
+
+  if(found.length>0){
+    found.forEach(function(f){
+      var btn=document.createElement('div');
+      btn.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)';
+      btn.innerHTML='<span style="font-size:18px">📄</span><span style="flex:1;font-size:13px;color:var(--tx)">'+f.name+'</span>';
+      var ob=document.createElement('button');
+      ob.className='btn btn-g';ob.textContent='열기';
+      ob.style.cssText='padding:5px 12px;font-size:12px';
+      ob.setAttribute('data-fname',f.name);
+      ob.addEventListener('click',function(){openChecklistFile(this.getAttribute('data-fname'));});
+      btn.appendChild(ob);
+      var tempDiv=document.createElement('div');
+      tempDiv.appendChild(btn);
+      html+=tempDiv.innerHTML;
+    });
+  }
+
+  if(notFound.length>0){
+    notFound.forEach(function(f){
+      html+='<div style="padding:6px 0;border-bottom:1px solid var(--bd)">';
+      html+='<span style="font-size:12px;color:var(--tx3)">⚠ 파일 없음: '+f+'</span>';
+      html+='</div>';
+    });
+  }
+
+  if(!html) html='<div style="font-size:12px;color:var(--tx2)">매칭되는 파일이 없습니다.</div>';
+  listArea.innerHTML=html;
+}
+
+function openChecklistFile(fname){
+  if(!_checklistDirHandle) return;
+  var iter2=_checklistDirHandle.entries();
+  function tryNext(){
+    iter2.next().then(function(r){
+      if(r.done) return;
+      var name=r.value[0], handle=r.value[1];
+      if(handle.kind==='file' && name.toLowerCase()===fname.toLowerCase()){
+        handle.getFile().then(function(file){
+          var url=URL.createObjectURL(file);
+          window.open(url,'_blank');
+        });
+        return;
+      }
+      tryNext();
+    });
+  }
+  tryNext();
 }
 
 function registerChecklist(){
