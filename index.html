@@ -903,8 +903,7 @@ function loadChecklistTypes(){
     }).catch(function(){});
 }
 
-var _checklistDirHandle = null;
-var _checklistFiles = [];
+var CHECKLIST_LINK_MAP = {"부자재": "https://docs.google.com/presentation/d/1fq0O70mlV-ApkIqxtBbRuFtPBry13TTy/preview", "스피커": "https://docs.google.com/presentation/d/1AbzqZPu8XWw9BCCaNe44vKOCo4IWdLjH/preview", "BLU ASSY": "https://docs.google.com/presentation/d/1SQq-O-5VTHHT4z-Dzj0v0yzQMqLdml0E/preview", "board": "https://docs.google.com/presentation/d/11FD13lLeI_yTeBqCDhX12dnKS76ozFNA/preview", "CABLE": "https://docs.google.com/presentation/d/1nEONNccRJ-jdL-wCV9mAWtRQAzB001w4/preview", "Frame ASSY(Frame to 부자재 & Frame to Frame)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/preview", "Frame SUB ASSY(Frame to Board to Cable)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/preview", "Frame": "https://docs.google.com/presentation/d/1SZLZWmsCu626hhzjJTXthbaUTUKb4K8W/preview", "GLASS": "https://docs.google.com/presentation/d/1pigruqIsTMGG8EPVj0FFWkivAHHC39-T/preview", "Housing ASSY(Housing to LENS)": "https://docs.google.com/presentation/d/1Pf_YXxpph83y5OObOFhJRfLklcKe-zEJ/preview", "Housing BRACKET": "https://docs.google.com/presentation/d/15VMXxe0m90Ddek9hjZDjvTBge37YfuRI/preview", "HOUSING": "https://docs.google.com/presentation/d/1M8CIIVhQqVVvs35zFrptKMPH8c2n1Qmp/preview", "LED assy(LED TO HOUSING TO 캔들)": "https://docs.google.com/presentation/d/1pfQ6hoPl40yCpGb61D7q2CeFKljDP0Qr/preview", "LED assy(LED TO HOUSING)": "https://docs.google.com/presentation/d/1D7tCWD8Pab-LK8CePSB6Zts7MRck9rlp/preview", "LED Converter": "https://docs.google.com/presentation/d/12mStAWhkm7qbUNNIBTBVtkjMhF9YTGtg/preview", "LED": "https://docs.google.com/presentation/d/16qkd8Rj1DaxPJ2NEdNIS8zpJYYL_MsHd/preview", "Main board": "https://docs.google.com/presentation/d/1iOm7esjzTkzLhwtW77iF0Vd7clPmqlTg/preview", "MODULE SUB ASSY": "https://docs.google.com/presentation/d/1zN7OIF-S4Lzui0OrZi6AHd4EWCu1MIi-/preview", "MODULE": "https://docs.google.com/presentation/d/1sYZxbHzhPNLmzqGwiLBoJ1nkqaDM4s3T/preview", "PCT": "https://docs.google.com/presentation/d/1Of0xe7i6hZxRRJGjEt4uqLh5KPvxRsKw/preview", "SUB ASSY(Housing to Lens to LED to Frame)": "https://docs.google.com/presentation/d/1G1c5GRWIjEeOWmOnfac9hgbUwxPP_6EQ/preview", "SUB BOARD ASSY": "https://docs.google.com/presentation/d/1KdwHHgtYud2FRUZEiUi5wlRa8S6YhbZv/preview", "SUB BOARD": "https://docs.google.com/presentation/d/1bD_zI0roEcGSar5yWkmLSU6stO-PnoaF/preview", "touch controller board": "https://docs.google.com/presentation/d/1B7XQcSGfMut3F_-eatvKA58Q9zzAbOUN/preview"};
 
 function searchChecklist(pn){
   if(!pn) return;
@@ -920,163 +919,32 @@ function searchChecklist(pn){
         alert('일치하는 검사지도서가 없습니다.');
         return;
       }
-      // 파일명 저장 후 폴더 지정 UI 표시
-      _checklistFiles = json.files;
-      showFolderSelectUI(json.files);
+      // 구글 슬라이드 링크로 바로 열기
+      var opened=0;
+      json.files.forEach(function(fileType){
+        var link=CHECKLIST_LINK_MAP[fileType.trim()];
+        if(link){
+          window.open(link,'_blank');
+          opened++;
+        }
+      });
+      if(opened>0){
+        area.innerHTML='<div style="background:var(--gd);border:1px solid var(--green);border-radius:var(--r);padding:10px 14px;margin-top:10px">'
+          +'<div style="font-size:12px;color:var(--green)">✓ 검사지도서 '+opened+'개 열림</div>'
+          +'<div style="font-size:11px;color:var(--tx2);margin-top:4px">'+json.files.join(', ')+'</div>'
+          +'</div>';
+      } else {
+        area.innerHTML='<div style="font-size:12px;color:var(--amber);margin-top:10px">⚠ 등록된 검사지도서 링크가 없습니다.</div>';
+      }
     }).catch(function(err){
       area.innerHTML='<div style="color:var(--red);font-size:12px">조회 실패: '+err.message+'</div>';
     });
 }
 
-function showFolderSelectUI(files){
-  var area=document.getElementById('iqc-checklist-result');
-  var alreadySelected = _checklistDirHandle !== null;
-
-  var html='<div style="margin-top:12px;background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r);padding:14px">';
-  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-  html+='<div style="font-size:12px;color:var(--tx2)">검사지도서 폴더</div>';
-  html+='<button class="btn btn-b" onclick="selectChecklistFolder()" style="padding:6px 14px;font-size:12px">';
-  html+= alreadySelected ? '📂 폴더 변경' : '📂 폴더 지정';
-  html+='</button></div>';
-
-  if(alreadySelected){
-    html+='<div id="checklist-file-list"><div style="font-size:12px;color:var(--tx2)">파일 탐색 중...</div></div>';
-  } else {
-    html+='<div id="checklist-file-list"><div style="font-size:12px;color:var(--tx2)">폴더를 지정하면 파일을 찾아드립니다.</div></div>';
-  }
-  html+='</div>';
-  area.innerHTML=html;
-
-  // 이미 폴더 지정됐으면 바로 파일 탐색
-  if(alreadySelected){
-    findFilesInFolder(files);
-  }
-}
-
-function selectChecklistFolder(){
-  if(!window.showDirectoryPicker){
-    alert('이 브라우저는 폴더 선택을 지원하지 않습니다. Chrome을 사용해 주세요.');
-    return;
-  }
-  window.showDirectoryPicker({mode:'read'})
-    .then(function(handle){
-      _checklistDirHandle = handle;
-      findFilesInFolder(_checklistFiles);
-    }).catch(function(){});
-}
-
-function findFilesInFolder(targetFiles){
-  if(!_checklistDirHandle || !targetFiles || !targetFiles.length) return;
-  var listArea=document.getElementById('checklist-file-list');
-  if(listArea) listArea.innerHTML='<div style="font-size:12px;color:var(--tx2)">파일 탐색 중...</div>';
-
-  var allFiles={};
-
-  function scanDir(dirHandle){
-    var iter=dirHandle.entries();
-    return new Promise(function(resolve){
-      function next(){
-        iter.next().then(function(r){
-          if(r.done){resolve();return;}
-          var name=r.value[0], handle=r.value[1];
-          if(handle.kind==='file'){
-            allFiles[name]=handle;
-            next();
-          } else if(handle.kind==='directory'){
-            scanDir(handle).then(next);
-          } else {
-            next();
-          }
-        }).catch(function(){next();});
-      }
-      next();
-    });
-  }
-
-  scanDir(_checklistDirHandle).then(function(){
-    var found=[], notFound=[];
-    targetFiles.forEach(function(fname){
-      var matchedList=[];
-      // 확장자 제거 후 비교 (대소문자 무시)
-      var fnameBase=fname.toLowerCase().replace(/\.[^.]+$/,'');
-      Object.keys(allFiles).forEach(function(k){
-        var kBase=k.toLowerCase().replace(/\.[^.]+$/,'');
-        if(kBase===fnameBase){
-          matchedList.push({name:k,handle:allFiles[k]});
-        }
-      });
-      if(matchedList.length>0){
-        matchedList.forEach(function(m){found.push(m);});
-      } else {
-        notFound.push(fname);
-      }
-    });
-    renderFoundFiles(found, notFound);
-  });
-}
-
-function renderFoundFiles(found, notFound){
-  var listArea=document.getElementById('checklist-file-list');
-  if(!listArea) return;
-  listArea.innerHTML='';
-
-  if(found.length>0){
-    // 파일 목록 표시
-    found.forEach(function(f){
-      var row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)';
-      var icon=document.createElement('span');
-      icon.textContent='📄';icon.style.fontSize='16px';
-      var name=document.createElement('span');
-      name.textContent=f.name;
-      name.style.cssText='font-size:12px;color:var(--green)';
-      row.appendChild(icon);row.appendChild(name);
-      listArea.appendChild(row);
-    });
-
-    // 자동으로 모든 파일 열기
-    found.forEach(function(f){
-      f.handle.getFile().then(function(file){
-        var url=URL.createObjectURL(file);
-        window.open(url,'_blank');
-      });
-    });
-  }
-
-  if(notFound.length>0){
-    notFound.forEach(function(fname){
-      var row=document.createElement('div');
-      row.style.cssText='padding:6px 0;border-bottom:1px solid var(--bd)';
-      row.innerHTML='<span style="font-size:12px;color:var(--tx3)">⚠ 파일 없음: '+fname+'</span>';
-      listArea.appendChild(row);
-    });
-  }
-
-  if(!found.length && !notFound.length){
-    listArea.innerHTML='<div style="font-size:12px;color:var(--tx2)">매칭되는 파일이 없습니다.</div>';
-  }
-}
 
 
-function openChecklistFile(fname){
-  if(!_checklistDirHandle) return;
-  var iter2=_checklistDirHandle.entries();
-  function tryNext(){
-    iter2.next().then(function(r){
-      if(r.done) return;
-      var name=r.value[0], handle=r.value[1];
-      if(handle.kind==='file' && name.toLowerCase()===fname.toLowerCase()){
-        handle.getFile().then(function(file){
-          var url=URL.createObjectURL(file);
-          window.open(url,'_blank');
-        });
-        return;
-      }
-      tryNext();
-    });
-  }
-  tryNext();
-}
+
+
 
 function registerChecklist(){
   var pn=document.getElementById('iqc-input').value.trim().toUpperCase();
