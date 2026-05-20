@@ -977,6 +977,7 @@ function searchIQC(){
         re.innerHTML='<div style="background:var(--ad);border:1.5px solid var(--amber);border-radius:var(--r);padding:16px">'
           +'<div style="font-size:13px;color:var(--amber);font-weight:700">품번: '+pn+'</div>'
           +'<div style="font-size:13px;color:var(--tx);margin-top:6px">중점검사 항목 없음 → <b style="color:var(--amber)">양산 변동검사 AQL 등급</b> 적용</div></div>';
+        searchChecklist(pn);
         return;
       }
       var sorted=matched.slice().sort(function(a,b){
