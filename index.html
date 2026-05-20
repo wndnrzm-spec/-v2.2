@@ -996,12 +996,20 @@ function findFilesInFolder(targetFiles){
   scanDir(_checklistDirHandle).then(function(){
     var found=[], notFound=[];
     targetFiles.forEach(function(fname){
-      var matched=null;
+      var matchedList=[];
+      // 확장자 제거 후 비교 (대소문자 무시)
+      var fnameBase=fname.toLowerCase().replace(/\.[^.]+$/,'');
       Object.keys(allFiles).forEach(function(k){
-        if(k.toLowerCase()===fname.toLowerCase()) matched={name:fname,handle:allFiles[k]};
+        var kBase=k.toLowerCase().replace(/\.[^.]+$/,'');
+        if(kBase===fnameBase){
+          matchedList.push({name:k,handle:allFiles[k]});
+        }
       });
-      if(matched) found.push(matched);
-      else notFound.push(fname);
+      if(matchedList.length>0){
+        matchedList.forEach(function(m){found.push(m);});
+      } else {
+        notFound.push(fname);
+      }
     });
     renderFoundFiles(found, notFound);
   });
