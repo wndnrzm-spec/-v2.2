@@ -903,7 +903,32 @@ function loadChecklistTypes(){
     }).catch(function(){});
 }
 
-var CHECKLIST_LINK_MAP = {"부자재": "https://docs.google.com/presentation/d/1fq0O70mlV-ApkIqxtBbRuFtPBry13TTy/preview", "스피커": "https://docs.google.com/presentation/d/1AbzqZPu8XWw9BCCaNe44vKOCo4IWdLjH/preview", "BLU ASSY": "https://docs.google.com/presentation/d/1SQq-O-5VTHHT4z-Dzj0v0yzQMqLdml0E/preview", "board": "https://docs.google.com/presentation/d/11FD13lLeI_yTeBqCDhX12dnKS76ozFNA/preview", "CABLE": "https://docs.google.com/presentation/d/1nEONNccRJ-jdL-wCV9mAWtRQAzB001w4/preview", "Frame ASSY(Frame to 부자재 & Frame to Frame)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/preview", "Frame SUB ASSY(Frame to Board to Cable)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/preview", "Frame": "https://docs.google.com/presentation/d/1SZLZWmsCu626hhzjJTXthbaUTUKb4K8W/preview", "GLASS": "https://docs.google.com/presentation/d/1pigruqIsTMGG8EPVj0FFWkivAHHC39-T/preview", "Housing ASSY(Housing to LENS)": "https://docs.google.com/presentation/d/1Pf_YXxpph83y5OObOFhJRfLklcKe-zEJ/preview", "Housing BRACKET": "https://docs.google.com/presentation/d/15VMXxe0m90Ddek9hjZDjvTBge37YfuRI/preview", "HOUSING": "https://docs.google.com/presentation/d/1M8CIIVhQqVVvs35zFrptKMPH8c2n1Qmp/preview", "LED assy(LED TO HOUSING TO 캔들)": "https://docs.google.com/presentation/d/1pfQ6hoPl40yCpGb61D7q2CeFKljDP0Qr/preview", "LED assy(LED TO HOUSING)": "https://docs.google.com/presentation/d/1D7tCWD8Pab-LK8CePSB6Zts7MRck9rlp/preview", "LED Converter": "https://docs.google.com/presentation/d/12mStAWhkm7qbUNNIBTBVtkjMhF9YTGtg/preview", "LED": "https://docs.google.com/presentation/d/16qkd8Rj1DaxPJ2NEdNIS8zpJYYL_MsHd/preview", "Main board": "https://docs.google.com/presentation/d/1iOm7esjzTkzLhwtW77iF0Vd7clPmqlTg/preview", "MODULE SUB ASSY": "https://docs.google.com/presentation/d/1zN7OIF-S4Lzui0OrZi6AHd4EWCu1MIi-/preview", "MODULE": "https://docs.google.com/presentation/d/1sYZxbHzhPNLmzqGwiLBoJ1nkqaDM4s3T/preview", "PCT": "https://docs.google.com/presentation/d/1Of0xe7i6hZxRRJGjEt4uqLh5KPvxRsKw/preview", "SUB ASSY(Housing to Lens to LED to Frame)": "https://docs.google.com/presentation/d/1G1c5GRWIjEeOWmOnfac9hgbUwxPP_6EQ/preview", "SUB BOARD ASSY": "https://docs.google.com/presentation/d/1KdwHHgtYud2FRUZEiUi5wlRa8S6YhbZv/preview", "SUB BOARD": "https://docs.google.com/presentation/d/1bD_zI0roEcGSar5yWkmLSU6stO-PnoaF/preview", "touch controller board": "https://docs.google.com/presentation/d/1B7XQcSGfMut3F_-eatvKA58Q9zzAbOUN/preview"};
+var CHECKLIST_LINK_MAP = {
+  "검사지도서_부자재": "https://docs.google.com/presentation/d/1fq0O70mlV-ApkIqxtBbRuFtPBry13TTy/preview",
+  "검사지도서_스피커": "https://docs.google.com/presentation/d/1AbzqZPu8XWw9BCCaNe44vKOCo4IWdLjH/preview",
+  "검사지도서_BLU ASSY": "https://docs.google.com/presentation/d/1SQq-O-5VTHHT4z-Dzj0v0yzQMqLdml0E/preview",
+  "검사지도서_board": "https://docs.google.com/presentation/d/11FD13lLeI_yTeBqCDhX12dnKS76ozFNA/preview",
+  "검사지도서_CABLE": "https://docs.google.com/presentation/d/1nEONNccRJ-jdL-wCV9mAWtRQAzB001w4/preview",
+  "검사지도서_Frame ASSY(Frame to 부자재 & Frame to Frame)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/preview",
+  "검사지도서_Frame SUB ASSY(Frame to Board to Cable)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/preview",
+  "검사지도서_Frame": "https://docs.google.com/presentation/d/1SZLZWmsCu626hhzjJTXthbaUTUKb4K8W/preview",
+  "검사지도서_GLASS": "https://docs.google.com/presentation/d/1pigruqIsTMGG8EPVj0FFWkivAHHC39-T/preview",
+  "검사지도서_Housing ASSY(Housing to LENS)": "https://docs.google.com/presentation/d/1Pf_YXxpph83y5OObOFhJRfLklcKe-zEJ/preview",
+  "검사지도서_Housing BRACKET": "https://docs.google.com/presentation/d/15VMXxe0m90Ddek9hjZDjvTBge37YfuRI/preview",
+  "검사지도서_HOUSING": "https://docs.google.com/presentation/d/1M8CIIVhQqVVvs35zFrptKMPH8c2n1Qmp/preview",
+  "검사지도서_LED assy(LED TO HOUSING TO 캔들)": "https://docs.google.com/presentation/d/1pfQ6hoPl40yCpGb61D7q2CeFKljDP0Qr/preview",
+  "검사지도서_LED assy(LED TO HOUSING)": "https://docs.google.com/presentation/d/1D7tCWD8Pab-LK8CePSB6Zts7MRck9rlp/preview",
+  "검사지도서_LED Converter": "https://docs.google.com/presentation/d/12mStAWhkm7qbUNNIBTBVtkjMhF9YTGtg/preview",
+  "검사지도서_LED": "https://docs.google.com/presentation/d/16qkd8Rj1DaxPJ2NEdNIS8zpJYYL_MsHd/preview",
+  "검사지도서_Main board": "https://docs.google.com/presentation/d/1iOm7esjzTkzLhwtW77iF0Vd7clPmqlTg/preview",
+  "검사지도서_MODULE SUB ASSY": "https://docs.google.com/presentation/d/1zN7OIF-S4Lzui0OrZi6AHd4EWCu1MIi-/preview",
+  "검사지도서_MODULE": "https://docs.google.com/presentation/d/1sYZxbHzhPNLmzqGwiLBoJ1nkqaDM4s3T/preview",
+  "검사지도서_PCT": "https://docs.google.com/presentation/d/1Of0xe7i6hZxRRJGjEt4uqLh5KPvxRsKw/preview",
+  "검사지도서_SUB ASSY(Housing to Lens to LED to Frame)": "https://docs.google.com/presentation/d/1G1c5GRWIjEeOWmOnfac9hgbUwxPP_6EQ/preview",
+  "검사지도서_SUB BOARD ASSY": "https://docs.google.com/presentation/d/1KdwHHgtYud2FRUZEiUi5wlRa8S6YhbZv/preview",
+  "검사지도서_SUB BOARD": "https://docs.google.com/presentation/d/1bD_zI0roEcGSar5yWkmLSU6stO-PnoaF/preview",
+  "검사지도서_touch controller board": "https://docs.google.com/presentation/d/1B7XQcSGfMut3F_-eatvKA58Q9zzAbOUN/preview"
+};
 
 function searchChecklist(pn){
   if(!pn) return;
@@ -922,7 +947,8 @@ function searchChecklist(pn){
       // 구글 슬라이드 링크로 바로 열기
       var opened=0;
       json.files.forEach(function(fileType){
-        var link=CHECKLIST_LINK_MAP[fileType.trim()];
+        var key=fileType.trim();
+        var link=CHECKLIST_LINK_MAP[key];
         if(link){
           window.open(link,'_blank');
           opened++;
