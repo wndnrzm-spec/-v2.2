@@ -967,87 +967,95 @@ function selectChecklistFolder(){
 
 function findFilesInFolder(targetFiles){
   if(!_checklistDirHandle || !targetFiles || !targetFiles.length) return;
-  var listArea = document.getElementById('checklist-file-list');
+  var listArea=document.getElementById('checklist-file-list');
   if(listArea) listArea.innerHTML='<div style="font-size:12px;color:var(--tx2)">파일 탐색 중...</div>';
 
-  var found=[], notFound=[];
-  var entries=[];
-
-  // 폴더 내 파일 목록 수집
-  function collectEntries(dirHandle, prefix){
-    return dirHandle.values ? 
-      Array.from(dirHandle.values()) : 
-      new Promise(function(resolve){
-        var arr=[];
-        var iter=dirHandle.entries();
-        function next(){
-          iter.next().then(function(r){
-            if(r.done){resolve(arr);return;}
-            arr.push(r.value);next();
-          });
-        }
-        next();
-      });
-  }
-
   var allFiles={};
-  var iter = _checklistDirHandle.entries();
-  function readNext(){
-    iter.next().then(function(r){
-      if(r.done){
-        // 수집 완료 → 매칭
-        targetFiles.forEach(function(fname){
-          var matched=null;
-          Object.keys(allFiles).forEach(function(k){
-            if(k.toLowerCase()===fname.toLowerCase()) matched=allFiles[k];
-          });
-          if(matched) found.push({name:fname, handle:matched});
-          else notFound.push(fname);
-        });
-        renderFoundFiles(found, notFound);
-        return;
+
+  function scanDir(dirHandle){
+    var iter=dirHandle.entries();
+    return new Promise(function(resolve){
+      function next(){
+        iter.next().then(function(r){
+          if(r.done){resolve();return;}
+          var name=r.value[0], handle=r.value[1];
+          if(handle.kind==='file'){
+            allFiles[name]=handle;
+            next();
+          } else if(handle.kind==='directory'){
+            scanDir(handle).then(next);
+          } else {
+            next();
+          }
+        }).catch(function(){next();});
       }
-      var name=r.value[0], handle=r.value[1];
-      if(handle.kind==='file') allFiles[name]=handle;
-      readNext();
+      next();
     });
   }
-  readNext();
+
+  scanDir(_checklistDirHandle).then(function(){
+    var found=[], notFound=[];
+    targetFiles.forEach(function(fname){
+      var matched=null;
+      Object.keys(allFiles).forEach(function(k){
+        if(k.toLowerCase()===fname.toLowerCase()) matched={name:fname,handle:allFiles[k]};
+      });
+      if(matched) found.push(matched);
+      else notFound.push(fname);
+    });
+    renderFoundFiles(found, notFound);
+  });
 }
 
 function renderFoundFiles(found, notFound){
   var listArea=document.getElementById('checklist-file-list');
   if(!listArea) return;
-  var html='';
+  listArea.innerHTML='';
 
   if(found.length>0){
     found.forEach(function(f){
-      var btn=document.createElement('div');
-      btn.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)';
-      btn.innerHTML='<span style="font-size:18px">📄</span><span style="flex:1;font-size:13px;color:var(--tx)">'+f.name+'</span>';
-      var ob=document.createElement('button');
-      ob.className='btn btn-g';ob.textContent='열기';
-      ob.style.cssText='padding:5px 12px;font-size:12px';
-      ob.setAttribute('data-fname',f.name);
-      ob.addEventListener('click',function(){openChecklistFile(this.getAttribute('data-fname'));});
-      btn.appendChild(ob);
-      var tempDiv=document.createElement('div');
-      tempDiv.appendChild(btn);
-      html+=tempDiv.innerHTML;
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)';
+
+      var icon=document.createElement('span');
+      icon.textContent='📄';icon.style.fontSize='18px';
+
+      var name=document.createElement('span');
+      name.textContent=f.name;
+      name.style.cssText='flex:1;font-size:13px;color:var(--tx)';
+
+      var btn=document.createElement('button');
+      btn.className='btn btn-g';
+      btn.textContent='열기';
+      btn.style.cssText='padding:5px 12px;font-size:12px';
+      btn.addEventListener('click',(function(handle){
+        return function(){
+          handle.getFile().then(function(file){
+            var url=URL.createObjectURL(file);
+            window.open(url,'_blank');
+          });
+        };
+      })(f.handle));
+
+      row.appendChild(icon);row.appendChild(name);row.appendChild(btn);
+      listArea.appendChild(row);
     });
   }
 
   if(notFound.length>0){
-    notFound.forEach(function(f){
-      html+='<div style="padding:6px 0;border-bottom:1px solid var(--bd)">';
-      html+='<span style="font-size:12px;color:var(--tx3)">⚠ 파일 없음: '+f+'</span>';
-      html+='</div>';
+    notFound.forEach(function(fname){
+      var row=document.createElement('div');
+      row.style.cssText='padding:6px 0;border-bottom:1px solid var(--bd)';
+      row.innerHTML='<span style="font-size:12px;color:var(--tx3)">⚠ 파일 없음: '+fname+'</span>';
+      listArea.appendChild(row);
     });
   }
 
-  if(!html) html='<div style="font-size:12px;color:var(--tx2)">매칭되는 파일이 없습니다.</div>';
-  listArea.innerHTML=html;
+  if(!found.length && !notFound.length){
+    listArea.innerHTML='<div style="font-size:12px;color:var(--tx2)">매칭되는 파일이 없습니다.</div>';
+  }
 }
+
 
 function openChecklistFile(fname){
   if(!_checklistDirHandle) return;
