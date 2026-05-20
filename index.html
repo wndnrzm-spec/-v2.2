@@ -1021,32 +1021,25 @@ function renderFoundFiles(found, notFound){
   listArea.innerHTML='';
 
   if(found.length>0){
+    // 파일 목록 표시
     found.forEach(function(f){
       var row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)';
-
+      row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)';
       var icon=document.createElement('span');
-      icon.textContent='📄';icon.style.fontSize='18px';
-
+      icon.textContent='📄';icon.style.fontSize='16px';
       var name=document.createElement('span');
       name.textContent=f.name;
-      name.style.cssText='flex:1;font-size:13px;color:var(--tx)';
-
-      var btn=document.createElement('button');
-      btn.className='btn btn-g';
-      btn.textContent='열기';
-      btn.style.cssText='padding:5px 12px;font-size:12px';
-      btn.addEventListener('click',(function(handle){
-        return function(){
-          handle.getFile().then(function(file){
-            var url=URL.createObjectURL(file);
-            window.open(url,'_blank');
-          });
-        };
-      })(f.handle));
-
-      row.appendChild(icon);row.appendChild(name);row.appendChild(btn);
+      name.style.cssText='font-size:12px;color:var(--green)';
+      row.appendChild(icon);row.appendChild(name);
       listArea.appendChild(row);
+    });
+
+    // 자동으로 모든 파일 열기
+    found.forEach(function(f){
+      f.handle.getFile().then(function(file){
+        var url=URL.createObjectURL(file);
+        window.open(url,'_blank');
+      });
     });
   }
 
