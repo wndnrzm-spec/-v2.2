@@ -812,28 +812,65 @@ function loadStdTable(){
     .then(function(text){
       var json=JSON.parse(text.substring(text.indexOf('{'),text.lastIndexOf('}')+1));
       var rows=json.table.rows;
-      var cols=json.table.cols;
-      // 헤더 (3행: 구분, AQL등급, 송도입고품, 통관입고품)
-      var th='<thead><tr>';
-      cols.forEach(function(c){
-        if(c.label) th+='<th style="background:var(--sf2);color:var(--tx2);padding:8px;border:1px solid var(--bd);text-align:center">'+c.label+'</th>';
-      });
-      th+='</tr></thead>';
+      var numCols=json.table.cols.length;
+      var thStyle='background:var(--sf2);color:var(--tx2);padding:8px;border:1px solid var(--bd);text-align:center;font-weight:600';
+      var tdBase='padding:7px 8px;border:1px solid var(--bd);';
       var tb='<tbody>';
       rows.forEach(function(row,ri){
-        if(!row.c||!row.c[0]||!row.c[0].v) return;
+        if(!row.c) return;
+        var vals=[];
+        for(var i=0;i<numCols;i++){
+          vals.push(row.c[i]&&row.c[i].v!=null?String(row.c[i].v).trim():'');
+        }
+        // 빈 행 스킵
+        if(vals.every(function(v){return !v;})) return;
+
         var isEven=ri%2===0;
-        tb+='<tr'+(isEven?' style="background:var(--sf2)"':'')+'>';
-        row.c.forEach(function(cell,ci){
-          var v=cell&&cell.v!=null?String(cell.v).trim():'';
-          var style='padding:7px 8px;border:1px solid var(--bd);color:'+(ci===0?'var(--tx)':'var(--tx2)')+';'+(ci>0?'text-align:center':'');
-          // 비고행 병합 처리 - 마지막 행
+        var bg=isEven?'background:var(--sf2);':'';
+
+        // 1행: 제목 (전체 병합)
+        if(ri===0){
+          tb+='<tr><td colspan="'+numCols+'" style="'+tdBase+'color:var(--tx);font-weight:700;text-align:center;font-size:12px;'+bg+'">'+vals[0]+'</td></tr>';
+          return;
+        }
+        // 2행: Gaming 헤더 (C열부터 병합)
+        if(ri===1){
+          var gaming=vals[2]||'';
+          tb+='<tr>'
+            +'<td style="'+tdBase+thStyle+';'+bg+'">'+vals[0]+'</td>'
+            +'<td style="'+tdBase+thStyle+';'+bg+'">'+vals[1]+'</td>'
+            +(gaming?'<td colspan="'+(numCols-2)+'" style="'+tdBase+thStyle+';'+bg+'">'+gaming+'</td>':'<td colspan="'+(numCols-2)+'" style="'+tdBase+bg+'"></td>')
+            +'</tr>';
+          return;
+        }
+        // 3행: 컬럼명 헤더
+        if(ri===2){
+          tb+='<tr>';
+          vals.forEach(function(v,ci){
+            tb+='<td style="'+tdBase+thStyle+';'+bg+'">'+v+'</td>';
+          });
+          tb+='</tr>';
+          return;
+        }
+        // 마지막 비고행: 첫 셀 + 나머지 병합
+        var hasOnlyFirst=vals[0]&&vals.slice(1).every(function(v){return !v;});
+        var bigo=vals[0]==='비고';
+        if(bigo){
+          var bigoText=vals.slice(1).join(' ').trim()||vals[0];
+          tb+='<tr><td style="'+tdBase+'color:var(--tx2);font-weight:600;'+bg+'">'+vals[0]+'</td>'
+            +'<td colspan="'+(numCols-1)+'" style="'+tdBase+'color:var(--tx2);font-size:11px;line-height:1.6;'+bg+'">'+vals.slice(1).filter(Boolean).join('<br>')+'</td></tr>';
+          return;
+        }
+        // 일반 데이터 행
+        tb+='<tr>';
+        vals.forEach(function(v,ci){
+          var style=tdBase+'color:'+(ci===0?'var(--tx)':'var(--tx2)')+';'+(ci>0?'text-align:center;':'')+bg;
           tb+='<td style="'+style+'">'+v+'</td>';
         });
         tb+='</tr>';
       });
       tb+='</tbody>';
-      area.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+th+tb+'</table></div>';
+      area.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">'+tb+'</table></div>';
       area.dataset.loaded='1';
     }).catch(function(){
       area.innerHTML='<div style="font-size:11px;color:var(--tx2)">기준표 로딩 실패</div>';
