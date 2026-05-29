@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2605260001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2605290001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -140,7 +140,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <button id="mode-btn-iqc" class="mode-btn" onclick="switchMode('iqc')">
     <span class="ico">&#x1F50D;</span>IQC 중점검사
   </button>
-  <button id="mode-btn-def" class="mode-btn" onclick="switchMode('defect')" style="border-color:var(--amber);color:var(--amber)">
+  <button id="mode-btn-def" class="mode-btn" onclick="switchMode('defect')">
     <span class="ico">&#x26A0;</span>출고 후 불량 이력 조회
   </button>
 </div>
@@ -717,9 +717,9 @@ function switchMode(mode){
   var btnIqc=document.getElementById('mode-btn-iqc');
   var btnDef=document.getElementById('mode-btn-def');
   allPanels.forEach(function(p){var el=document.getElementById('panel-'+p);if(el){el.classList.remove('active');}});
-  if(btnShip)btnShip.className='mode-btn';
-  if(btnIqc)btnIqc.className='mode-btn';
-  if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='var(--amber)';btnDef.style.color='var(--amber)';}
+  if(btnShip){btnShip.className='mode-btn';btnShip.style.borderColor='';btnShip.style.color='';}
+  if(btnIqc){btnIqc.className='mode-btn';btnIqc.style.borderColor='';btnIqc.style.color='';}
+  if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='';btnDef.style.color='';}
   if(mode==='ship'){
     if(btnShip)btnShip.className='mode-btn active-ship';
     if(shipTabs)shipTabs.style.display='flex';
@@ -910,7 +910,7 @@ var CHECKLIST_LINK_MAP = {
   "검사지도서_board": "https://docs.google.com/presentation/d/11FD13lLeI_yTeBqCDhX12dnKS76ozFNA/present?rm=minimal&start=true&loop=true&delayms=10000",
   "검사지도서_CABLE": "https://docs.google.com/presentation/d/1nEONNccRJ-jdL-wCV9mAWtRQAzB001w4/present?rm=minimal&start=true&loop=true&delayms=10000",
   "검사지도서_Frame ASSY(Frame to 부자재 & Frame to Frame)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/present?rm=minimal&start=true&loop=true&delayms=10000",
-  "검사지도서_Frame SUB ASSY(Frame to Board to Cable)": "https://docs.google.com/presentation/d/1AAqZBVBsgUF5EcwcRCFni7NwFqEPac7c/present?rm=minimal&start=true&loop=true&delayms=10000",
+  "검사지도서_Frame SUB ASSY(Frame to Board to Cable)": "https://docs.google.com/presentation/d/1ZNCLoGoXGRewVjtcu5MGku1hNvbAerUX/present?rm=minimal&start=true&loop=true&delayms=10000",
   "검사지도서_Frame": "https://docs.google.com/presentation/d/1SZLZWmsCu626hhzjJTXthbaUTUKb4K8W/present?rm=minimal&start=true&loop=true&delayms=10000",
   "검사지도서_GLASS": "https://docs.google.com/presentation/d/1pigruqIsTMGG8EPVj0FFWkivAHHC39-T/present?rm=minimal&start=true&loop=true&delayms=10000",
   "검사지도서_Housing ASSY(Housing to LENS)": "https://docs.google.com/presentation/d/1Pf_YXxpph83y5OObOFhJRfLklcKe-zEJ/present?rm=minimal&start=true&loop=true&delayms=10000",
