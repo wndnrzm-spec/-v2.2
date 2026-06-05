@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2605300003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2605300005)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -236,13 +236,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       onkeydown="if(event.key==='Enter')searchIQC()">
     <button class="btn btn-g" onclick="searchIQC()" style="padding:11px 20px">조회</button>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
-    <select id="iqc-type-select"
-      style="flex:1;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:13px;padding:10px 14px;outline:none;cursor:pointer">
-      <option value="">검사지도서 유형 선택</option>
-    </select>
-    <button class="btn btn-g" onclick="registerChecklist()" style="padding:11px 20px;white-space:nowrap">신규 등록</button>
-  </div>
+
   <div style="display:flex;gap:20px;align-items:flex-start">
   <div style="flex:1;min-width:0">
   <div id="iqc-result"></div>
@@ -732,7 +726,6 @@ function switchMode(mode){
     if(statBar)statBar.style.display='none';
     var pi=document.getElementById('panel-iqc');if(pi)pi.classList.add('active');
     loadStdTable();
-    loadChecklistTypes();
     setTimeout(function(){var inp=document.getElementById('iqc-input');if(inp)inp.focus();},50);
   } else if(mode==='defect'){
     if(btnDef)btnDef.className='mode-btn active-def';
@@ -887,21 +880,7 @@ function loadStdTable(){
 }
 var CHECKLIST_URL='https://script.google.com/macros/s/AKfycbwgJTXHzhqOYDCVPCQ6xU8j5ALRSLQA3_RYYqgALMLF3d0pyUwIkZes3m_IY_YiFEzaMg/exec';
 
-function loadChecklistTypes(){
-  var sel=document.getElementById('iqc-type-select');
-  if(!sel||sel.options.length>1) return;
-  fetch(CHECKLIST_URL+'?action=getTypes')
-    .then(function(r){return r.json();})
-    .then(function(json){
-      if(json.types){
-        json.types.forEach(function(t){
-          var opt=document.createElement('option');
-          opt.value=t;opt.textContent=t;
-          sel.appendChild(opt);
-        });
-      }
-    }).catch(function(){});
-}
+
 
 // 검사지도서 링크맵 - 구글 시트 '검사지도서' 탭 H/I열에서 동적 로딩
 var CHECKLIST_LINK_MAP = {};
@@ -953,8 +932,21 @@ function searchChecklist(pn){
     .then(function(r){return r.json();})
     .then(function(json){
       if(!json.files||json.files.length===0){
-        area.innerHTML='';
-        alert('일치하는 검사지도서가 없습니다.');
+        // 검사지도서 없음 → 등록 UI 표시
+        var typeOpts='<option value="">유형 선택</option>';
+        Object.keys(CHECKLIST_LINK_MAP).forEach(function(k){
+          typeOpts+='<option value="'+k+'">'+k+'</option>';
+        });
+        area.innerHTML='<div id="cl-register-box" style="border:1.5px solid var(--amber);border-radius:var(--r);padding:14px;margin-top:8px;background:var(--ad)">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:10px">⚠ 등록된 검사지도서가 없습니다</div>'
+          +'<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">검사지도서 유형을 선택하여 등록하세요</div>'
+          +'<select id="cl-type-inline" style="width:100%;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:13px;padding:9px 12px;outline:none;margin-bottom:10px">'
+          +typeOpts+'</select>'
+          +'<div style="display:flex;gap:8px">'
+          +'<button class="btn btn-g" onclick="registerChecklistInline()" style="flex:1;padding:9px">등록</button>'
+          +'<button class="btn btn-g" onclick="document.getElementById(&quot;cl-register-box&quot;).style.display=&quot;none&quot;" style="flex:1;padding:9px;color:var(--red);border-color:var(--red)">목록에 없음 → 관리자 통보</button>'
+          +'</div>'
+          +'</div>';
         return;
       }
       var opened=0;
@@ -990,18 +982,16 @@ function searchChecklist(pn){
 
 
 
-function registerChecklist(){
+function registerChecklistInline(){
   var pn=document.getElementById('iqc-input').value.trim().toUpperCase();
-  var type=document.getElementById('iqc-type-select').value;
+  var type=document.getElementById('cl-type-inline').value;
   if(!pn){alert('품번을 입력해 주세요');return;}
-  if(!type){alert('검사지도서 유형을 선택해 주세요');return;}
+  if(!type){alert('유형을 선택해 주세요');return;}
   if(!confirm(pn+' / '+type+'\n\n위 내용으로 등록하시겠습니까?')) return;
-
   fetch(CHECKLIST_URL+'?action=register&pn='+encodeURIComponent(pn)+'&type='+encodeURIComponent(type))
     .then(function(r){return r.json();})
     .then(function(json){
       if(json.success){
-        alert('등록 완료!\n품번: '+pn+'\n유형: '+type);
         searchIQC();
       } else if(json.error==='duplicate'){
         alert('⚠ 중복 등록 불가!\n\n'+json.message);
@@ -1010,6 +1000,8 @@ function registerChecklist(){
       }
     }).catch(function(err){alert('등록 실패: '+err.message);});
 }
+
+
 
 function testIQCConn(){
   var dot=document.getElementById('iqc-conn-dot');
