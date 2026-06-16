@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2605300005)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2606160002)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -880,11 +880,10 @@ function loadStdTable(){
 }
 var CHECKLIST_URL='https://script.google.com/macros/s/AKfycbwgJTXHzhqOYDCVPCQ6xU8j5ALRSLQA3_RYYqgALMLF3d0pyUwIkZes3m_IY_YiFEzaMg/exec';
 
-
-
 // 검사지도서 링크맵 - 구글 시트 '검사지도서' 탭 H/I열에서 동적 로딩
 var CHECKLIST_LINK_MAP = {};
 var CHECKLIST_LINK_MAP_LOADED = false;
+var checklistWin = null;
 function loadChecklistLinkMap(callback){
   if(CHECKLIST_LINK_MAP_LOADED){if(callback)callback();return;}
   var sheetName=encodeURIComponent('검사지도서');
@@ -892,16 +891,34 @@ function loadChecklistLinkMap(callback){
     .then(function(r){return r.text();})
     .then(function(text){
       var json=JSON.parse(text.substring(text.indexOf('{'),text.lastIndexOf('}')+1));
+      // cols 헤더에서 첫 번째 데이터 추출 (parsedNumHeaders로 흡수된 행)
+      var cols=json.table.cols;
+      if(cols&&cols[7]&&cols[8]){
+        var hName=cols[7].label?cols[7].label.trim():'';
+        var hId=cols[8].label?cols[8].label.trim():'';
+        // 헤더 label에서 실제 데이터 추출 (형식: "H열 (유형명) 검사지도서_부자재")
+        var nameMatch=hName.match(/검사지도서_.+/);
+        var idMatch=hId.match(/https:\/\/.+|^[A-Za-z0-9_\-]{20,}$/);
+        if(nameMatch&&idMatch){
+          var n=nameMatch[0].trim();
+          var id=idMatch[0].trim();
+          if(id.indexOf('http')===0){
+            CHECKLIST_LINK_MAP[n]=id;
+          } else {
+            CHECKLIST_LINK_MAP[n]='https://docs.google.com/presentation/d/'+id+'/embed?start=true&loop=true&delayms=10000';
+          }
+        }
+      }
+      // rows 데이터 파싱
       var rows=json.table.rows;
       rows.forEach(function(row){
         if(!row.c)return;
-        var nameCell=row.c[7];  // H열 (index 7)
-        var idCell=row.c[8];    // I열 (index 8)
+        var nameCell=row.c[7];
+        var idCell=row.c[8];
         if(!nameCell||!nameCell.v||!idCell||!idCell.v)return;
         var name=String(nameCell.v).trim();
         var id=String(idCell.v).trim();
         if(name&&id){
-          // I열이 전체 URL이면 그대로 사용, ID만 있으면 embed URL 조합
           if(id.indexOf('http')===0){
             CHECKLIST_LINK_MAP[name]=id;
           } else {
@@ -918,21 +935,16 @@ function loadChecklistLinkMap(callback){
     });
 }
 
-// 검사지도서 창 참조 저장 (같은 창 재사용)
-var checklistWin=null;
-
 function searchChecklist(pn){
   if(!pn) return;
   var area=document.getElementById('iqc-checklist-result');
   if(!area) return;
   area.innerHTML='<div style="font-size:12px;color:var(--tx2)">검사지도서 조회 중...</div>';
-
   loadChecklistLinkMap(function(){
   fetch(CHECKLIST_URL+'?action=search&pn='+encodeURIComponent(pn))
     .then(function(r){return r.json();})
     .then(function(json){
       if(!json.files||json.files.length===0){
-        // 검사지도서 없음 → 등록 UI 표시
         var typeOpts='<option value="">유형 선택</option>';
         Object.keys(CHECKLIST_LINK_MAP).forEach(function(k){
           typeOpts+='<option value="'+k+'">'+k+'</option>';
@@ -954,7 +966,6 @@ function searchChecklist(pn){
         var key=fileType.trim();
         var link=CHECKLIST_LINK_MAP[key];
         if(link){
-          // 창이 살아있으면 URL만 교체, 닫혔으면 새 창으로 열기
           if(checklistWin && !checklistWin.closed){
             checklistWin.location.href=link;
           } else {
@@ -976,6 +987,7 @@ function searchChecklist(pn){
     });
   });
 }
+
 
 
 
