@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607060003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607060004)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -238,6 +238,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       style="width:120px;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:14px;font-weight:600;padding:11px 14px;outline:none"
       onkeydown="if(event.key==='Enter')searchIQC()">
     <button class="btn btn-g" onclick="searchIQC()" style="padding:11px 20px">조회</button>
+  </div>
+  <div style="margin-bottom:14px">
+    <button class="btn" onclick="endST()" style="width:100%;padding:11px 20px;background:var(--rd);border-color:var(--red);color:var(--red)">END (검사 종료)</button>
+    <div id="iqc-st-status" style="margin-top:6px;font-size:11px;color:var(--tx2)"></div>
   </div>
 
   <div style="display:flex;gap:20px;align-items:flex-start">
@@ -833,6 +837,41 @@ function renderMesUI(){
   document.getElementById('mes-flist').innerHTML=html;
 }
 var IQC_SHEET_ID='1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc';
+var ST_WEBAPP_URL='https://script.google.com/macros/s/AKfycbyH8Oi07C-JHnKytr6-1KVYNmIfhlljc30VMiefD-pS8sVQgI3yji3jQZdaBl-7q4T_NA/exec';
+function fmtST(d){
+  function p2(n){return (n<10?'0':'')+n;}
+  return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+' '+p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds());
+}
+function startST(pn){
+  window._stPn=pn;
+  window._stStart=new Date();
+  var st=document.getElementById('iqc-st-status');
+  if(st) st.textContent='START 기록됨 ('+fmtST(window._stStart)+') — 검사 종료 시 END를 눌러주세요';
+}
+function endST(){
+  var st=document.getElementById('iqc-st-status');
+  if(!window._stPn||!window._stStart){
+    if(st) st.textContent='먼저 품번을 조회(START)해 주세요';
+    return;
+  }
+  var pn=window._stPn;
+  var startStr=fmtST(window._stStart);
+  var endStr=fmtST(new Date());
+  if(st) st.textContent='저장 중...';
+  fetch(ST_WEBAPP_URL+'?pn='+encodeURIComponent(pn)+'&start='+encodeURIComponent(startStr)+'&end='+encodeURIComponent(endStr))
+    .then(function(r){return r.json();})
+    .then(function(json){
+      if(json.success){
+        if(st) st.textContent='✓ 저장 완료 — '+pn+' ('+startStr+' ~ '+endStr+')';
+      } else {
+        if(st) st.textContent='저장 실패: '+(json.error||'오류');
+      }
+      window._stPn=null;window._stStart=null;
+    }).catch(function(err){
+      if(st) st.textContent='저장 실패: '+err.message;
+      window._stPn=null;window._stStart=null;
+    });
+}
 var IQC_MES_SHEET_ID='1chSza8aCOe88doXfpdOI_2ELqQtwGXinDVhefPiCFJg';
 var AQL_LOT_BOUNDS=[8,15,25,50,90,150,280,500,1200,3200,10000,35000,150000,500000,9999999999];
 var AQL_SIZE_MAP={"A":2,"B":3,"C":5,"D":8,"E":13,"F":20,"G":32,"H":50,"J":80,"K":125,"L":200,"M":315,"N":500,"P":800,"Q":1250,"R":20000};
@@ -1211,6 +1250,7 @@ function testIQCConn(){
 function searchIQC(){
   var pn=document.getElementById('iqc-input').value.trim().toUpperCase();
   if(!pn){alert('품번을 입력해 주세요');return;}
+  startST(pn);
   var qtyRaw=document.getElementById('iqc-qty-input')?document.getElementById('iqc-qty-input').value:'';
   var qty=parseInt(qtyRaw,10);if(isNaN(qty)||qty<0)qty=0;
   var re=document.getElementById('iqc-result');
