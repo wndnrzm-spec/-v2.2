@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607060004)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607070004)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -239,25 +239,25 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       onkeydown="if(event.key==='Enter')searchIQC()">
     <button class="btn btn-g" onclick="searchIQC()" style="padding:11px 20px">조회</button>
   </div>
+  <div style="display:flex;gap:8px;margin-bottom:6px">
+    <div style="flex:1;min-width:0"></div>
+    <div style="position:relative;flex-shrink:0;display:flex;gap:8px">
+      <div style="width:120px"></div>
+      <button class="btn btn-g" style="padding:11px 20px;visibility:hidden" tabindex="-1" aria-hidden="true">조회</button>
+      <button class="btn" onclick="endST()" style="position:absolute;inset:0;width:100%;height:100%;padding:0;background:var(--rd);border-color:var(--red);color:var(--red);white-space:nowrap;font-size:12px">END</button>
+    </div>
+  </div>
   <div style="margin-bottom:14px">
-    <button class="btn" onclick="endST()" style="width:100%;padding:11px 20px;background:var(--rd);border-color:var(--red);color:var(--red)">END (검사 종료)</button>
     <div id="iqc-st-status" style="margin-top:6px;font-size:11px;color:var(--tx2)"></div>
   </div>
-
-  <div style="display:flex;gap:20px;align-items:flex-start">
-  <div style="flex:1;min-width:0">
+  <div style="margin-bottom:16px">
+    <div class="sl2" style="margin-bottom:10px">&#x1F4CB; 양산 변동검사 기준</div>
+    <div id="std-table-area"><div style="color:var(--tx2);font-size:12px;padding:20px 0">로딩 중...</div></div>
+  </div>
   <div id="iqc-result"></div>
   <div id="iqc-category-area" style="margin-top:12px"></div>
   <div id="iqc-folder" style="margin-top:12px"></div>
   <div id="iqc-checklist-result"></div>
-  </div>
-  <div style="flex:0 0 420px;min-width:320px">
-  <div style="padding-top:0">
-    <div class="sl2" style="margin-bottom:10px">&#x1F4CB; 양산 변동검사 기준</div>
-    <div id="std-table-area"><div style="color:var(--tx2);font-size:12px;padding:20px 0">로딩 중...</div></div>
-  </div>
-  </div>
-  </div>
 </div>
 
 <!-- 출고 후 불량 이력 -->
@@ -842,8 +842,9 @@ function fmtST(d){
   function p2(n){return (n<10?'0':'')+n;}
   return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+' '+p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds());
 }
-function startST(pn){
+function startST(pn,qty){
   window._stPn=pn;
+  window._stQty=qty||'';
   window._stStart=new Date();
   var st=document.getElementById('iqc-st-status');
   if(st) st.textContent='START 기록됨 ('+fmtST(window._stStart)+') — 검사 종료 시 END를 눌러주세요';
@@ -855,10 +856,12 @@ function endST(){
     return;
   }
   var pn=window._stPn;
+  var qty=window._stQty||'';
+  var spl=window._lastSplQty||'';
   var startStr=fmtST(window._stStart);
   var endStr=fmtST(new Date());
   if(st) st.textContent='저장 중...';
-  fetch(ST_WEBAPP_URL+'?pn='+encodeURIComponent(pn)+'&start='+encodeURIComponent(startStr)+'&end='+encodeURIComponent(endStr))
+  fetch(ST_WEBAPP_URL+'?pn='+encodeURIComponent(pn)+'&start='+encodeURIComponent(startStr)+'&end='+encodeURIComponent(endStr)+'&qty='+encodeURIComponent(qty)+'&spl='+encodeURIComponent(spl))
     .then(function(r){return r.json();})
     .then(function(json){
       if(json.success){
@@ -866,10 +869,10 @@ function endST(){
       } else {
         if(st) st.textContent='저장 실패: '+(json.error||'오류');
       }
-      window._stPn=null;window._stStart=null;
+      window._stPn=null;window._stStart=null;window._stQty=null;
     }).catch(function(err){
       if(st) st.textContent='저장 실패: '+err.message;
-      window._stPn=null;window._stStart=null;
+      window._stPn=null;window._stStart=null;window._stQty=null;
     });
 }
 var IQC_MES_SHEET_ID='1chSza8aCOe88doXfpdOI_2ELqQtwGXinDVhefPiCFJg';
@@ -948,8 +951,9 @@ function findTovisGrade(companyName,tovisRows){
   return null;
 }
 function renderSplLine(gradeText,qty){
-  if(!qty) return '';
+  if(!qty){ window._lastSplQty=''; return ''; }
   var splQty=calcSPLQty(gradeText,qty,_aqlGridCache);
+  window._lastSplQty=(splQty==null?'':splQty);
   if(splQty==null) return '';
   return '<span style="color:var(--tx2)">검사 수량</span><span style="color:var(--blue);font-weight:700;font-size:16px">'+splQty+' EA</span>';
 }
@@ -1250,9 +1254,9 @@ function testIQCConn(){
 function searchIQC(){
   var pn=document.getElementById('iqc-input').value.trim().toUpperCase();
   if(!pn){alert('품번을 입력해 주세요');return;}
-  startST(pn);
   var qtyRaw=document.getElementById('iqc-qty-input')?document.getElementById('iqc-qty-input').value:'';
   var qty=parseInt(qtyRaw,10);if(isNaN(qty)||qty<0)qty=0;
+  startST(pn,qty);
   var re=document.getElementById('iqc-result');
   var fe=document.getElementById('iqc-folder');
   var ca=document.getElementById('iqc-category-area');
