@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270010)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270011)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -354,10 +354,18 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     </div>
     </div>
     <div id="admin-tab-mes" style="display:none">
-      <div style="font-size:11px;color:var(--tx2);margin-bottom:14px;line-height:1.6">MES 시스템에서 내보낸 엑셀 파일을 선택하면, 파일 1행(헤더)과 대형 MES DATA 시트 1행이 일치하는 컬럼끼리 매칭해서 데이터 안의 TrackOut 날짜를 기준으로 해당 연도 탭 맨 아래에 자동으로 추가합니다.</div>
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:14px;line-height:1.6">MES 시스템에서 내보낸 엑셀 파일을 선택하면, 파일 1행(헤더)과 대상 시트 1행이 일치하는 컬럼끼리 매칭해서 데이터 안의 날짜를 기준으로 해당 연도 탭 맨 아래에 자동으로 추가합니다.</div>
       <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">등록 대상</label>
+          <select id="mes-reg-target" style="width:100%;background:var(--sf2);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);padding:9px 10px;font-family:inherit;font-size:13px;box-sizing:border-box">
+            <option value="daehyung">대형 MES 등록</option>
+            <option value="oeju">외주 출하 DATA등록</option>
+            <option value="hapchak">합착 DATA등록</option>
+          </select>
+        </div>
         <div style="flex:2;min-width:220px">
-          <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">대형 MES 등록 - 엑셀 파일 선택</label>
+          <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">엑셀 파일 선택</label>
           <input type="file" id="mes-reg-file" accept=".xlsx,.xls" style="width:100%;font-size:12px;color:var(--tx2)">
         </div>
         <div>
@@ -1381,6 +1389,7 @@ function openAdminRegister(){
   var st=document.getElementById('admin-reg-status');
   st.textContent='';st.style.color='var(--tx2)';
   var mesFile=document.getElementById('mes-reg-file');if(mesFile)mesFile.value='';
+  var mesTarget=document.getElementById('mes-reg-target');if(mesTarget)mesTarget.value='daehyung';
   var mesSt=document.getElementById('mes-reg-status');
   if(mesSt){mesSt.textContent='';mesSt.style.color='var(--tx2)';}
   switchAdminTab('defect');
@@ -1442,8 +1451,10 @@ function submitAdminRegister(){
 }
 function submitMesImport(){
   var fileEl=document.getElementById('mes-reg-file');
+  var targetEl=document.getElementById('mes-reg-target');
   var statusEl=document.getElementById('mes-reg-status');
   var file=fileEl.files&&fileEl.files[0];
+  var target=targetEl?targetEl.value:'daehyung';
   if(!file){alert('엑셀 파일을 선택해 주세요');return;}
   if(!ADMIN_WEBAPP_URL||ADMIN_WEBAPP_URL.indexOf('PASTE_')===0){
     statusEl.style.color='var(--red)';
@@ -1473,7 +1484,7 @@ function submitMesImport(){
     fetch(ADMIN_WEBAPP_URL,{
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'mesImport',target:'daehyung',rows:rows})
+      body:JSON.stringify({action:'mesImport',target:target,rows:rows})
     }).then(function(r){return r.json();}).then(function(json){
       if(json&&json.ok){
         statusEl.style.color='var(--green)';
