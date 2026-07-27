@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270008)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270010)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -257,7 +257,6 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <div style="flex:1;min-width:0">
       <div id="iqc-result"></div>
       <div id="iqc-category-area" style="margin-top:12px"></div>
-      <div id="iqc-folder" style="margin-top:12px"></div>
       <div id="iqc-checklist-result"></div>
     </div>
     <div style="flex:0 0 420px;min-width:320px">
@@ -304,9 +303,13 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 <div id="admin-register-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center" onclick="if(event.target===this)closeAdminRegister()">
   <div style="background:var(--sf);border:1px solid var(--bd2);border-radius:var(--r);padding:20px;width:820px;max-width:94vw;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:15px;font-weight:700;color:var(--tx)">부적합 사항 등록</div>
+      <div style="display:flex;gap:8px">
+        <button id="admin-tabbtn-defect" onclick="switchAdminTab('defect')" class="btn btn-b" style="padding:6px 14px;font-size:13px;font-weight:700">부적합 사항 등록</button>
+        <button id="admin-tabbtn-mes" onclick="switchAdminTab('mes')" class="btn btn-gray" style="padding:6px 14px;font-size:13px;font-weight:700;opacity:0.55">MES DATA 등록</button>
+      </div>
       <button onclick="closeAdminRegister()" class="btn btn-gray" style="padding:4px 10px;font-size:14px">&times;</button>
     </div>
+    <div id="admin-tab-defect">
     <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
       <div style="flex:1;min-width:150px">
         <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">ISSUE 날짜</label>
@@ -348,6 +351,20 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
           <td style="padding:8px 10px"><a href="https://docs.google.com/spreadsheets/d/1xB7kcI3qNrw3RmXBpH9ywyIaSOA5Jsgbilh74RkJEmE/edit?usp=sharing" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">https://docs.google.com/spreadsheets/d/1xB7kcI3qNrw3RmXBpH9ywyIaSOA5Jsgbilh74RkJEmE/edit?usp=sharing</a></td>
         </tr>
       </table>
+    </div>
+    </div>
+    <div id="admin-tab-mes" style="display:none">
+      <div style="font-size:11px;color:var(--tx2);margin-bottom:14px;line-height:1.6">MES 시스템에서 내보낸 엑셀 파일을 선택하면, 파일 1행(헤더)과 대형 MES DATA 시트 1행이 일치하는 컬럼끼리 매칭해서 데이터 안의 TrackOut 날짜를 기준으로 해당 연도 탭 맨 아래에 자동으로 추가합니다.</div>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:2;min-width:220px">
+          <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">대형 MES 등록 - 엑셀 파일 선택</label>
+          <input type="file" id="mes-reg-file" accept=".xlsx,.xls" style="width:100%;font-size:12px;color:var(--tx2)">
+        </div>
+        <div>
+          <button class="btn btn-b" onclick="submitMesImport()" style="padding:9px 20px;font-size:13px;background:var(--green);border-color:var(--green);color:#04211a;font-weight:700;white-space:nowrap">등록</button>
+        </div>
+      </div>
+      <div id="mes-reg-status" style="font-size:12px;color:var(--tx2);margin-top:12px;min-height:16px"></div>
     </div>
   </div>
 </div>
@@ -1363,7 +1380,21 @@ function openAdminRegister(){
   document.getElementById('admin-reg-file').value='';
   var st=document.getElementById('admin-reg-status');
   st.textContent='';st.style.color='var(--tx2)';
+  var mesFile=document.getElementById('mes-reg-file');if(mesFile)mesFile.value='';
+  var mesSt=document.getElementById('mes-reg-status');
+  if(mesSt){mesSt.textContent='';mesSt.style.color='var(--tx2)';}
+  switchAdminTab('defect');
   document.getElementById('admin-register-modal').style.display='flex';
+}
+function switchAdminTab(tab){
+  document.getElementById('admin-tab-defect').style.display=tab==='defect'?'block':'none';
+  document.getElementById('admin-tab-mes').style.display=tab==='mes'?'block':'none';
+  var bd=document.getElementById('admin-tabbtn-defect');
+  var bm=document.getElementById('admin-tabbtn-mes');
+  bd.className=tab==='defect'?'btn btn-b':'btn btn-gray';
+  bm.className=tab==='mes'?'btn btn-b':'btn btn-gray';
+  bd.style.opacity=tab==='defect'?'1':'0.55';
+  bm.style.opacity=tab==='mes'?'1':'0.55';
 }
 function closeAdminRegister(){
   document.getElementById('admin-register-modal').style.display='none';
@@ -1408,6 +1439,55 @@ function submitAdminRegister(){
     });
   };
   reader.readAsDataURL(file);
+}
+function submitMesImport(){
+  var fileEl=document.getElementById('mes-reg-file');
+  var statusEl=document.getElementById('mes-reg-status');
+  var file=fileEl.files&&fileEl.files[0];
+  if(!file){alert('엑셀 파일을 선택해 주세요');return;}
+  if(!ADMIN_WEBAPP_URL||ADMIN_WEBAPP_URL.indexOf('PASTE_')===0){
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='관리자 등록 서버 URL이 아직 설정되지 않았습니다 (ADMIN_WEBAPP_URL 확인)';
+    return;
+  }
+  statusEl.style.color='var(--tx2)';
+  statusEl.textContent='파일 읽는 중...';
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var rows;
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    }catch(err){
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='파일 읽기 실패: '+err.message;
+      return;
+    }
+    if(!rows.length){
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='파일에 데이터가 없습니다';
+      return;
+    }
+    statusEl.textContent='업로드 중... ('+rows.length+'건)';
+    fetch(ADMIN_WEBAPP_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'mesImport',target:'daehyung',rows:rows})
+    }).then(function(r){return r.json();}).then(function(json){
+      if(json&&json.ok){
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='등록 완료 — '+(json.summary||'');
+      }else{
+        statusEl.style.color='var(--red)';
+        statusEl.textContent='등록 실패: '+(json&&json.error?json.error:'알 수 없는 오류');
+      }
+    }).catch(function(err){
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='등록 실패: '+err.message;
+    });
+  };
+  reader.readAsArrayBuffer(file);
 }
 var _lbScale=1,_lbX=0,_lbY=0,_lbDrag=false,_lbSX=0,_lbSY=0;
 function driveImgUrlFull(url){
@@ -1478,11 +1558,9 @@ function searchIQC(){
   var qty=parseInt(qtyRaw,10);if(isNaN(qty)||qty<0)qty=0;
   startST(pn,qty);
   var re=document.getElementById('iqc-result');
-  var fe=document.getElementById('iqc-folder');
   var ca=document.getElementById('iqc-category-area');
   var pa=document.getElementById('iqc-photo-area');
   re.innerHTML='<div style="color:var(--tx2);font-size:13px">조회 중...</div>';
-  fe.innerHTML='';
   if(ca)ca.innerHTML='';
   if(pa)pa.innerHTML='<div style="color:var(--tx2);font-size:12px;padding:20px 0">조회 중...</div>';
   var sheetName=encodeURIComponent('1. 중점검사 LIST');
@@ -1540,18 +1618,8 @@ function searchIQC(){
       window._iqcPn=pn;
       searchChecklist(pn);
       if(ca) buildCompanyArea(pn,qty,true);
-      fe.innerHTML='<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;margin-top:12px">'
-        +'<div style="font-size:11px;color:var(--tx2);margin-bottom:6px">IQC 기준서 폴더 경로</div>'
-        +'<div style="font-family:Consolas,monospace;font-size:12px;color:var(--blue)">\\\\192.168.10.195\\iqc\\IQC기준서\\'+pn+'\\</div>'
-        +'<button onclick="copyIQCPath()" class="btn btn-b" style="margin-top:8px;font-size:12px;padding:6px 14px">경로 복사</button></div>';
       });
     }).catch(function(err){re.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 조회 실패: '+err.message+'</div>';});
-}
-function copyIQCPath(){
-  var pn=window._iqcPn||'';if(!pn)return;
-  var path='\\\\192.168.10.195\\iqc\\IQC기준서\\'+pn+'\\';
-  if(navigator.clipboard)navigator.clipboard.writeText(path).then(function(){alert('경로 복사 완료!');});
-  else prompt('복사(Ctrl+C):',path);
 }
 var WEBAPP_URL='https://script.google.com/macros/s/AKfycbydUX5Zgxf02WPtUmGPRoyz_Ih4MQaJV56tatONLTxDEPq8ilVtU6KWqGlXHIWuludGLA/exec';
 function testDefConn(){
