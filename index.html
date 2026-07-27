@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270006)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -227,6 +227,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <span class="conn-label">구글 시트 연결 상태</span>
     <span class="conn-status" id="iqc-conn-status">미확인</span>
     <button class="btn btn-gray" onclick="testIQCConn()" style="padding:5px 12px;font-size:11px">연결 테스트</button>
+    <button class="btn btn-amber" onclick="openAdminRegister()" style="padding:5px 12px;font-size:11px;margin-left:auto">관리자 등록</button>
   </div>
   <div class="sl2" style="margin-bottom:10px">IQC 중점검사 조회</div>
   <div class="info-box">품번을 입력하면 구글 시트에서 IQC 중점검사 항목을 조회합니다.</div>
@@ -296,6 +297,29 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <img id="lightbox-img" src="" style="max-width:90vw;max-height:88vh;user-select:none;transform-origin:center center;transition:transform .08s linear" draggable="false">
   </div>
   <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--tx2)">더블클릭 또는 휠로 확대/축소 &middot; 드래그로 이동</div>
+</div>
+
+<div id="admin-register-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center" onclick="if(event.target===this)closeAdminRegister()">
+  <div style="background:var(--sf);border:1px solid var(--bd2);border-radius:var(--r);padding:20px;width:360px;max-width:92vw">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:15px;font-weight:700;color:var(--tx)">부적합 사항 등록</div>
+      <button onclick="closeAdminRegister()" class="btn btn-gray" style="padding:4px 10px;font-size:14px">&times;</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">ISSUE 날짜</label>
+      <input type="date" id="admin-reg-date" style="width:100%;background:var(--sf2);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);padding:9px 10px;font-family:inherit;font-size:13px;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">품번</label>
+      <input type="text" id="admin-reg-pn" placeholder="예: MPH01-0016A" style="width:100%;background:var(--sf2);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);padding:9px 10px;font-family:inherit;font-size:13px;text-transform:uppercase;box-sizing:border-box">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--tx2);display:block;margin-bottom:4px">사진 등록</label>
+      <input type="file" id="admin-reg-file" accept="image/*" style="width:100%;font-size:12px;color:var(--tx2)">
+    </div>
+    <div id="admin-reg-status" style="font-size:12px;color:var(--tx2);margin-bottom:10px;min-height:16px"></div>
+    <button class="btn btn-b" onclick="submitAdminRegister()" style="width:100%;padding:10px;font-size:13px;background:var(--green);border-color:var(--green);color:#04211a;font-weight:700">등록</button>
+  </div>
 </div>
 
 </div>
@@ -1297,6 +1321,63 @@ function renderPhotoArea(url,dateLabel){
   if(imgEl)imgEl.onerror=function(){
     pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:20px 12px;text-align:center;font-size:12px;color:var(--tx2)">사진을 불러올 수 없습니다 — <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">원본 링크 열기</a></div>';
   };
+}
+var ADMIN_WEBAPP_URL='https://script.google.com/macros/s/AKfycbxFJazwNBpQutK6X1vTwhaGnG3XxfOq1cyVuM6J9_QlEOt7WyZhKbhn7fOE61nG2s2z5A/exec';
+var ADMIN_PASSWORD='김민규';
+function openAdminRegister(){
+  var pw=prompt('관리자 비밀번호를 입력해 주세요');
+  if(pw===null)return;
+  if(pw!==ADMIN_PASSWORD){alert('비밀번호가 올바르지 않습니다');return;}
+  document.getElementById('admin-reg-date').value='';
+  document.getElementById('admin-reg-pn').value='';
+  document.getElementById('admin-reg-file').value='';
+  var st=document.getElementById('admin-reg-status');
+  st.textContent='';st.style.color='var(--tx2)';
+  document.getElementById('admin-register-modal').style.display='flex';
+}
+function closeAdminRegister(){
+  document.getElementById('admin-register-modal').style.display='none';
+}
+function submitAdminRegister(){
+  var dateEl=document.getElementById('admin-reg-date');
+  var pnEl=document.getElementById('admin-reg-pn');
+  var fileEl=document.getElementById('admin-reg-file');
+  var statusEl=document.getElementById('admin-reg-status');
+  var issueDate=dateEl.value;
+  var pn=pnEl.value.trim().toUpperCase();
+  var file=fileEl.files&&fileEl.files[0];
+  if(!issueDate){alert('ISSUE 날짜를 입력해 주세요');return;}
+  if(!pn){alert('품번을 입력해 주세요');return;}
+  if(!file){alert('사진을 선택해 주세요');return;}
+  if(!ADMIN_WEBAPP_URL||ADMIN_WEBAPP_URL.indexOf('PASTE_')===0){
+    statusEl.style.color='var(--red)';
+    statusEl.textContent='관리자 등록 서버 URL이 아직 설정되지 않았습니다 (ADMIN_WEBAPP_URL 확인)';
+    return;
+  }
+  statusEl.style.color='var(--tx2)';
+  statusEl.textContent='업로드 중...';
+  var reader=new FileReader();
+  reader.onload=function(){
+    var base64=String(reader.result).split(',')[1];
+    fetch(ADMIN_WEBAPP_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({pn:pn,issueDate:issueDate,filename:file.name,mimeType:file.type||'image/jpeg',data:base64})
+    }).then(function(r){return r.json();}).then(function(json){
+      if(json&&json.ok){
+        statusEl.style.color='var(--green)';
+        statusEl.textContent='등록 완료!';
+        setTimeout(closeAdminRegister,900);
+      }else{
+        statusEl.style.color='var(--red)';
+        statusEl.textContent='등록 실패: '+(json&&json.error?json.error:'일치하는 이력을 찾지 못했습니다');
+      }
+    }).catch(function(err){
+      statusEl.style.color='var(--red)';
+      statusEl.textContent='등록 실패: '+err.message;
+    });
+  };
+  reader.readAsDataURL(file);
 }
 var _lbScale=1,_lbX=0,_lbY=0,_lbDrag=false,_lbSX=0,_lbSY=0;
 function driveImgUrlFull(url){
