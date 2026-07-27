@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270007)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270008)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -302,7 +302,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 </div>
 
 <div id="admin-register-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center" onclick="if(event.target===this)closeAdminRegister()">
-  <div style="background:var(--sf);border:1px solid var(--bd2);border-radius:var(--r);padding:20px;width:820px;max-width:94vw">
+  <div style="background:var(--sf);border:1px solid var(--bd2);border-radius:var(--r);padding:20px;width:820px;max-width:94vw;max-height:90vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="font-size:15px;font-weight:700;color:var(--tx)">부적합 사항 등록</div>
       <button onclick="closeAdminRegister()" class="btn btn-gray" style="padding:4px 10px;font-size:14px">&times;</button>
@@ -325,6 +325,30 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       </div>
     </div>
     <div id="admin-reg-status" style="font-size:12px;color:var(--tx2);margin-top:12px;min-height:16px"></div>
+    <div style="margin-top:18px;border-top:1px solid var(--bd);padding-top:14px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="border-bottom:1px solid var(--bd)">
+          <td style="padding:8px 10px;color:var(--tx);font-weight:700;white-space:nowrap">중점검사LIST</td>
+          <td style="padding:8px 10px"><a href="https://docs.google.com/spreadsheets/d/1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc/edit?gid=0#gid=0" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">https://docs.google.com/spreadsheets/d/1QJe1GQuXZFRnw6S6b0vr4uiiXaae125qeJaWM1wUCyc/edit?gid=0#gid=0</a></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--bd)">
+          <td style="padding:8px 10px;color:var(--tx);font-weight:700;white-space:nowrap">IQC MES 등록<div style="font-weight:400;color:var(--tx3);font-size:11px">(AQL SPL 자동 산출 RAW)</div></td>
+          <td style="padding:8px 10px"><a href="https://docs.google.com/spreadsheets/d/1chSza8aCOe88doXfpdOI_2ELqQtwGXinDVhefPiCFJg/edit?usp=sharing" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">https://docs.google.com/spreadsheets/d/1chSza8aCOe88doXfpdOI_2ELqQtwGXinDVhefPiCFJg/edit?usp=sharing</a></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--bd)">
+          <td style="padding:8px 10px;color:var(--tx);font-weight:700;white-space:nowrap">대형 MES 등록<div style="font-weight:400;color:var(--tx3);font-size:11px">(출고 후 불량 RAW)</div></td>
+          <td style="padding:8px 10px"><a href="https://docs.google.com/spreadsheets/d/1IDyLgucc02k6QVLCiRQzQYZZUlC7gB9X1bJbRIv_C-U/edit?usp=sharing" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">https://docs.google.com/spreadsheets/d/1IDyLgucc02k6QVLCiRQzQYZZUlC7gB9X1bJbRIv_C-U/edit?usp=sharing</a></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--bd)">
+          <td style="padding:8px 10px;color:var(--tx);font-weight:700;white-space:nowrap">외주 출하 DATA등록<div style="font-weight:400;color:var(--tx3);font-size:11px">(식각 외주 RAW)</div></td>
+          <td style="padding:8px 10px"><a href="https://docs.google.com/spreadsheets/d/1ZXxCYEjzZkMalctqeOcZoSrH02MZ-x9UXkPGBBgYr9w/edit?usp=sharing" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">https://docs.google.com/spreadsheets/d/1ZXxCYEjzZkMalctqeOcZoSrH02MZ-x9UXkPGBBgYr9w/edit?usp=sharing</a></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 10px;color:var(--tx);font-weight:700;white-space:nowrap">합착 DATA등록<div style="font-weight:400;color:var(--tx3);font-size:11px">(공정 RAW)</div></td>
+          <td style="padding:8px 10px"><a href="https://docs.google.com/spreadsheets/d/1xB7kcI3qNrw3RmXBpH9ywyIaSOA5Jsgbilh74RkJEmE/edit?usp=sharing" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">https://docs.google.com/spreadsheets/d/1xB7kcI3qNrw3RmXBpH9ywyIaSOA5Jsgbilh74RkJEmE/edit?usp=sharing</a></td>
+        </tr>
+      </table>
+    </div>
   </div>
 </div>
 
