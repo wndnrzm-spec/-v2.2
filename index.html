@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607070006)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270003)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -258,7 +258,9 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       <div id="iqc-checklist-result"></div>
     </div>
     <div style="flex:0 0 420px;min-width:320px">
-      <div class="sl2" style="margin-bottom:10px">&#x1F4CB; 양산 변동검사 기준</div>
+      <div class="sl2" style="margin-bottom:10px">&#x1F4F7; 최근 불량 사진</div>
+      <div id="iqc-photo-area"><div style="color:var(--tx2);font-size:12px;padding:20px 0">품번을 조회해 주세요</div></div>
+      <div class="sl2" style="margin:18px 0 10px">&#x1F4CB; 양산 변동검사 기준</div>
       <div id="std-table-area"><div style="color:var(--tx2);font-size:12px;padding:20px 0">로딩 중...</div></div>
     </div>
   </div>
@@ -281,6 +283,19 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <button class="btn btn-amber" onclick="searchDefect()" style="padding:11px 20px">조회</button>
   </div>
   <div id="defect-result"><div class="empty">SET SN을 입력하고 조회해 주세요</div></div>
+</div>
+
+<div id="photo-lightbox" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;flex-direction:column" onclick="if(event.target===this)closePhotoLightbox()">
+  <div style="position:absolute;top:14px;right:18px;display:flex;gap:8px;z-index:2">
+    <button onclick="lightboxZoom(0.5)" class="btn btn-b" style="padding:8px 14px;font-size:16px">+</button>
+    <button onclick="lightboxZoom(-0.5)" class="btn btn-b" style="padding:8px 14px;font-size:16px">&minus;</button>
+    <button onclick="lightboxReset()" class="btn btn-b" style="padding:8px 14px;font-size:12px">100%</button>
+    <button onclick="closePhotoLightbox()" class="btn btn-b" style="padding:8px 14px;font-size:16px">&times;</button>
+  </div>
+  <div style="overflow:hidden;width:100%;height:100%;display:flex;align-items:center;justify-content:center;cursor:grab" id="lightbox-viewport">
+    <img id="lightbox-img" src="" style="max-width:90vw;max-height:88vh;user-select:none;transform-origin:center center;transition:transform .08s linear" draggable="false">
+  </div>
+  <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--tx2)">더블클릭 또는 휠로 확대/축소 &middot; 드래그로 이동</div>
 </div>
 
 </div>
@@ -1255,6 +1270,96 @@ function testIQCConn(){
       dot.className='conn-dot ok';sta.textContent='연결 성공 — '+json.table.rows.length+'건';
     }).catch(function(err){dot.className='conn-dot ng';sta.textContent='실패: '+err.message;});
 }
+function driveImgUrl(url){
+  if(!url)return '';
+  url=String(url).trim();
+  var m=url.match(/\/d\/([a-zA-Z0-9_-]{15,})/)||url.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
+  if(m&&m[1])return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w1000';
+  return url;
+}
+function renderPhotoArea(url,dateLabel){
+  var pa=document.getElementById('iqc-photo-area');
+  if(!pa)return;
+  if(!url){
+    pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:24px 12px;text-align:center;color:var(--tx3);font-size:12px">등록된 불량 사진 없음</div>';
+    return;
+  }
+  var img=driveImgUrl(url);
+  var imgFull=driveImgUrlFull(url);
+  pa.innerHTML='<div id="iqc-photo-wrap" ondblclick="openPhotoLightbox(\''+imgFull.replace(/'/g,"\\'")+'\')" style="display:block;border:1.5px solid var(--bd2);border-radius:var(--r);overflow:hidden;background:var(--sf2);cursor:zoom-in">'
+    +'<img id="iqc-photo-img" src="'+img+'" alt="불량 사진" style="width:100%;display:block;max-height:280px;object-fit:contain;background:#000">'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'
+    +(dateLabel?'<span style="font-size:11px;color:var(--tx3)">'+dateLabel+' 이력 사진</span>':'<span></span>')
+    +'<a href="'+url+'" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:underline">원본 링크 열기</a>'
+    +'</div>';
+  var imgEl=document.getElementById('iqc-photo-img');
+  if(imgEl)imgEl.onerror=function(){
+    pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:20px 12px;text-align:center;font-size:12px;color:var(--tx2)">사진을 불러올 수 없습니다 — <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">원본 링크 열기</a></div>';
+  };
+}
+var _lbScale=1,_lbX=0,_lbY=0,_lbDrag=false,_lbSX=0,_lbSY=0;
+function driveImgUrlFull(url){
+  if(!url)return '';
+  url=String(url).trim();
+  var m=url.match(/\/d\/([a-zA-Z0-9_-]{15,})/)||url.match(/[?&]id=([a-zA-Z0-9_-]{15,})/);
+  if(m&&m[1])return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w2000';
+  return url;
+}
+function openPhotoLightbox(url){
+  if(!url)return;
+  var lb=document.getElementById('photo-lightbox');
+  var img=document.getElementById('lightbox-img');
+  img.src=url;
+  _lbScale=1;_lbX=0;_lbY=0;
+  applyLightboxTransform();
+  lb.style.display='flex';
+}
+function closePhotoLightbox(){
+  document.getElementById('photo-lightbox').style.display='none';
+}
+function applyLightboxTransform(){
+  var img=document.getElementById('lightbox-img');
+  if(img)img.style.transform='translate('+_lbX+'px,'+_lbY+'px) scale('+_lbScale+')';
+}
+function lightboxZoom(delta){
+  _lbScale=Math.min(6,Math.max(1,_lbScale+delta));
+  if(_lbScale===1){_lbX=0;_lbY=0;}
+  applyLightboxTransform();
+}
+function lightboxReset(){
+  _lbScale=1;_lbX=0;_lbY=0;applyLightboxTransform();
+}
+document.addEventListener('DOMContentLoaded',function(){
+  var vp=document.getElementById('lightbox-viewport');
+  var img=document.getElementById('lightbox-img');
+  if(!vp||!img)return;
+  vp.addEventListener('wheel',function(e){
+    e.preventDefault();
+    lightboxZoom(e.deltaY<0?0.3:-0.3);
+  },{passive:false});
+  img.addEventListener('dblclick',function(e){
+    e.stopPropagation();
+    if(_lbScale>1)lightboxReset();else lightboxZoom(1.5);
+  });
+  vp.addEventListener('mousedown',function(e){
+    if(_lbScale<=1)return;
+    _lbDrag=true;_lbSX=e.clientX-_lbX;_lbSY=e.clientY-_lbY;
+    vp.style.cursor='grabbing';
+  });
+  window.addEventListener('mousemove',function(e){
+    if(!_lbDrag)return;
+    _lbX=e.clientX-_lbSX;_lbY=e.clientY-_lbSY;
+    applyLightboxTransform();
+  });
+  window.addEventListener('mouseup',function(){
+    _lbDrag=false;
+    if(vp)vp.style.cursor='grab';
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape')closePhotoLightbox();
+  });
+});
 function searchIQC(){
   var pn=document.getElementById('iqc-input').value.trim().toUpperCase();
   if(!pn){alert('품번을 입력해 주세요');return;}
@@ -1264,9 +1369,11 @@ function searchIQC(){
   var re=document.getElementById('iqc-result');
   var fe=document.getElementById('iqc-folder');
   var ca=document.getElementById('iqc-category-area');
+  var pa=document.getElementById('iqc-photo-area');
   re.innerHTML='<div style="color:var(--tx2);font-size:13px">조회 중...</div>';
   fe.innerHTML='';
   if(ca)ca.innerHTML='';
+  if(pa)pa.innerHTML='<div style="color:var(--tx2);font-size:12px;padding:20px 0">조회 중...</div>';
   var sheetName=encodeURIComponent('1. 중점검사 LIST');
   fetch('https://docs.google.com/spreadsheets/d/'+IQC_SHEET_ID+'/gviz/tq?tqx=out:json&sheet='+sheetName)
     .then(function(r){return r.text();})
@@ -1284,6 +1391,7 @@ function searchIQC(){
         if(ca){
           buildCompanyArea(pn,qty,false);
         }
+        renderPhotoArea('','');
         searchChecklist(pn);
         return;
       }
@@ -1295,6 +1403,8 @@ function searchIQC(){
       function gv(row,idx){if(!row.c||!row.c[idx])return '';var c=row.c[idx];return c.v!=null?String(c.v).trim():c.f||'';}
       var latest=sorted[0];
       var g=gv(latest,6)||'-';var d=gv(latest,1);var item=gv(latest,4);
+      var photoUrl=gv(latest,10);
+      renderPhotoArea(photoUrl,d);
       loadAQLGrid().then(function(){
       re.innerHTML='<div style="background:var(--gd);border:1.5px solid var(--green);border-radius:var(--r);padding:16px;margin-bottom:12px">'
         +'<div style="font-size:11px;color:var(--green);font-weight:700;margin-bottom:10px">✓ IQC 중점검사 항목 확인됨</div>'
