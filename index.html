@@ -26,10 +26,11 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .sdot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .mode-btn{padding:16px 8px;border-radius:var(--r);border:1.5px solid var(--bd2);background:var(--sf);color:var(--tx2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:80px}
 .mode-btn .ico{font-size:22px}
 .mode-btn.active-ship{border-color:var(--green);background:var(--green);color:#000}
+.mode-btn.active-ship2{border-color:var(--blue);background:var(--blue);color:#000}
 .mode-btn.active-iqc{border-color:var(--purple);background:var(--pd);color:var(--purple)}
 .mode-btn.active-def{border-color:var(--amber);background:var(--ad);color:var(--amber)}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
@@ -126,8 +127,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2607270011)</span></div>
-      <div class="hdr-s">출하 검증 시스템 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2608270003)</span></div>
+      <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
@@ -139,6 +140,9 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 <div class="mode-btns">
   <button id="mode-btn-ship" class="mode-btn active-ship" onclick="switchMode('ship')">
     <span class="ico">&#x1F4E6;</span>출하 검증 시스템
+  </button>
+  <button id="mode-btn-ship2" class="mode-btn" onclick="switchMode('ship2')">
+    <span class="ico">&#x1F4E6;</span>출하 검증 시스템 2
   </button>
   <button id="mode-btn-iqc" class="mode-btn" onclick="switchMode('iqc')">
     <span class="ico">&#x1F50D;</span>IQC 중점검사
@@ -159,6 +163,12 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <button class="tab active" onclick="tab('setup')">&#x2460; 데이터 등록</button>
   <button class="tab" onclick="tab('scan')">&#x2461; 스캔 검증</button>
   <button class="tab" onclick="tab('log')">&#x2462; 이력 조회</button>
+</div>
+
+<div class="tabs" id="ship2-tabs" style="display:none">
+  <button class="tab active" onclick="tab2('setup2')">&#x2460; 데이터 등록</button>
+  <button class="tab" onclick="tab2('scan2')">&#x2461; 스캔 검증</button>
+  <button class="tab" onclick="tab2('log2')">&#x2462; 점검 결과 다운</button>
 </div>
 
 <!-- 데이터 등록 -->
@@ -221,6 +231,68 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     </div>
   </div>
   <div id="log-area"><div class="empty">이력 없음</div></div>
+</div>
+
+<!-- 출하 검증 시스템 2 : 데이터 등록 -->
+<div class="panel" id="panel-setup2">
+  <div class="info-box">출하 계획을 아래 표에 직접 입력하세요. <b>PN</b>은 박스 라벨의 P/N 바코드와 매칭됩니다. 행 추가는 <b>+ 행 추가</b> 버튼 또는 마지막 셀에서 Tab키.</div>
+  <div class="sl2">출하 계획 직접 입력</div>
+  <div class="plan-wrap">
+    <table class="plan-tbl" id="plan-tbl2">
+      <thead><tr><th style="width:28px">#</th><th>품번 *</th><th>모델명</th><th>PN *</th><th style="width:70px">수량</th><th>INVOICE NO</th><th style="width:36px"></th></tr></thead>
+      <tbody id="plan-tbody2"></tbody>
+    </table>
+    <button class="add-row-btn" onclick="addRow2()">+ 행 추가</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="btn btn-g" onclick="applyTable2()">출하 계획 적용</button>
+    <button class="btn btn-gray" onclick="clearTable2()">전체 초기화</button>
+    <span style="margin-left:auto;font-size:12px;color:var(--tx2)" id="plan-status2">등록 없음</span>
+  </div>
+  <div class="dvd"></div>
+  <div class="sl2">등록된 출하 계획 현황</div>
+  <div id="plan-preview2"><div class="empty">출하 계획을 입력하고 적용 버튼을 눌러주세요</div></div>
+</div>
+
+<!-- 출하 검증 시스템 2 : 스캔 검증 -->
+<div class="panel" id="panel-scan2">
+  <div id="scan2-select-area">
+    <div class="sl2" style="margin-bottom:10px">검증할 품번 선택</div>
+    <div id="scan2-target-list"><div class="empty">등록된 출하 계획이 없습니다. 데이터 등록 탭에서 먼저 등록하세요.</div></div>
+  </div>
+  <div id="scan2-verify-area" style="display:none">
+    <div class="info-box" id="scan2-target-info"></div>
+    <div class="row" style="gap:10px;margin-bottom:10px">
+      <div style="flex:1;min-width:0">
+        <div class="sl2" style="margin-bottom:6px">&#x2460; PN 바코드 스캔</div>
+        <input type="text" class="scan-inp" id="scan2-pn-in" placeholder="PN 바코드 스캔" onkeydown="if(event.key==='Enter')scan2PN()">
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="sl2" style="margin-bottom:6px">&#x2461; Q'TY 바코드 스캔 (박스 수량)</div>
+        <input type="text" class="scan-inp" id="scan2-qty-in" placeholder="수량 스캔 또는 직접 입력" onkeydown="if(event.key==='Enter')scan2QTY()">
+      </div>
+    </div>
+    <div class="alert" id="scan2-alert-bar"><span style="font-size:20px;flex-shrink:0" id="scan2-alert-ico"></span><span style="flex:1" id="scan2-alert-msg"></span></div>
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--tx2)">누적 점검 수량: <b style="color:var(--tx);font-size:16px" id="scan2-running-qty">0</b> / <span id="scan2-target-qty">0</span></div>
+      <button class="btn btn-g" style="margin-left:auto" onclick="finishScan2()">리딩 이력 완료</button>
+      <button class="btn btn-gray" onclick="cancelScan2()">취소</button>
+    </div>
+    <div class="sl2">박스별 스캔 기록 (이번 세션)</div>
+    <div id="scan2-box-log"><div class="empty">스캔 기록 없음</div></div>
+  </div>
+</div>
+
+<!-- 출하 검증 시스템 2 : 이력 조회 -->
+<div class="panel" id="panel-log2">
+  <div class="row" style="margin-bottom:10px">
+    <div class="sl2" style="margin:0">점검 결과 다운 <span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--tx2)">(당일 세션 한정 · 새로고침 시 초기화 · 서버 미저장)</span></div>
+    <div class="ml-a" style="display:flex;gap:6px">
+      <button class="btn btn-b" onclick="exportXlsx2()" style="padding:7px 14px;font-size:12px">Excel 저장</button>
+      <button class="btn btn-r" onclick="clearLog2()" style="padding:7px 14px;font-size:12px">초기화</button>
+    </div>
+  </div>
+  <div id="log-area2"><div class="empty">이력 없음</div></div>
 </div>
 
 <!-- IQC 중점검사 -->
@@ -408,6 +480,10 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 var planData=[], mesData=[], scanLog=[], scannedSet=new Set();
 var stats={ok:0,ng:0,dup:0};
 var mesFileCounts=[], rowSeq=0;
+
+var planData2=[], rowSeq2=0;
+var verifyLog2=[];
+var currentVerify2=null;
 var cameraStream=null, scanning=false, animFrame=null;
 
 
@@ -415,6 +491,8 @@ var cameraStream=null, scanning=false, animFrame=null;
   var d=new Date();
   document.getElementById('hdr-date').textContent=d.getFullYear()+'.'+(d.getMonth()+1+'').padStart(2,'0')+'.'+(d.getDate()+'').padStart(2,'0');
   for(var i=0;i<3;i++) addRow();
+  for(var j=0;j<3;j++) addRow2();
+  renderScan2TargetList();
 })();
 
 
@@ -792,6 +870,296 @@ function clearLog(){
   document.getElementById('alert-bar').className='alert';
 }
 
+function addRow2(pn,mn,pnCode,qty,inv){
+  var id='r2_'+(++rowSeq2);
+  var tbody=document.getElementById('plan-tbody2');
+  var n=tbody.rows.length+1;
+  var tr=document.createElement('tr');
+  tr.id=id;
+  tr.innerHTML=
+    '<td style="padding:4px 6px;color:var(--tx3);font-size:10px;text-align:center">'+n+'</td>'
+    +'<td><input class="pi2" placeholder="0CELCLEV00-6" value="'+(pn||'')+'"></td>'
+    +'<td><input class="pi2" placeholder="L28ELLN1EV_SK3" value="'+(mn||'')+'"></td>'
+    +'<td><input class="pi2" placeholder="1602012-P187-VAR" value="'+(pnCode||'')+'"></td>'
+    +'<td><input class="pi2" type="number" placeholder="66" value="'+(qty||'')+'"></td>'
+    +'<td><input class="pi2" placeholder="TCKR-XXXX" value="'+(inv||'')+'"></td>'
+    +'<td><button class="del-btn" data-rid="'+id+'">&#x2715;</button></td>';
+  tbody.appendChild(tr);
+  tr.querySelector('.del-btn').addEventListener('click',function(){delRow2(this.getAttribute('data-rid'));});
+}
+function delRow2(id){var r=document.getElementById(id);if(r){r.remove();renumber2();}}
+function renumber2(){document.getElementById('plan-tbody2').querySelectorAll('tr').forEach(function(r,i){r.cells[0].textContent=i+1;});}
+function clearTable2(){
+  document.getElementById('plan-tbody2').innerHTML='';rowSeq2=0;
+  for(var i=0;i<3;i++)addRow2();
+  planData2=[];document.getElementById('plan-status2').textContent='등록 없음';
+  document.getElementById('plan-preview2').innerHTML='<div class="empty" style="padding:20px">등록 없음</div>';
+  renderScan2TargetList();
+}
+function applyTable2(){
+  var rows=document.getElementById('plan-tbody2').querySelectorAll('tr');
+  planData2=[];
+  rows.forEach(function(r){
+    var c=r.querySelectorAll('.pi2');
+    var pn=c[0].value.trim();if(!pn)return;
+    planData2.push({partNo:pn,modelName:c[1].value.trim(),pn:c[2].value.trim(),qty:parseInt(c[3].value)||0,invoiceNo:c[4].value.trim()});
+  });
+  if(!planData2.length){alert('품번을 입력해 주세요');return;}
+  document.getElementById('plan-status2').textContent=planData2.length+'건 등록됨';
+  renderPlanPreview2();
+  renderScan2TargetList();
+  tab2('scan2');
+}
+function renderPlanPreview2(){
+  if(!planData2.length){document.getElementById('plan-preview2').innerHTML='<div class="empty" style="padding:20px">등록 없음</div>';return;}
+  var h='<div style="overflow-x:auto;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--sf2)"><th style="padding:7px 8px;color:var(--tx2);text-align:left;border-bottom:1px solid var(--bd)">품번</th><th style="padding:7px 8px;color:var(--tx2);text-align:left;border-bottom:1px solid var(--bd)">PN</th><th style="padding:7px 8px;color:var(--tx2);text-align:center;border-bottom:1px solid var(--bd)">수량</th><th style="padding:7px 8px;color:var(--tx2);text-align:center;border-bottom:1px solid var(--bd)">상태</th></tr></thead><tbody>';
+  planData2.forEach(function(p){
+    var done=verifyLog2.some(function(v){return v.partNo===p.partNo&&v.pn===p.pn;});
+    h+='<tr style="border-bottom:1px solid var(--bd)"><td style="padding:7px 8px;word-break:break-all">'+p.partNo+'</td><td style="padding:7px 8px;word-break:break-all;color:var(--tx2)">'+(p.pn||'-')+'</td><td style="padding:7px 8px;text-align:center">'+(p.qty||'-')+'</td><td style="padding:7px 8px;text-align:center">'+(done?'<span class="bsm done">완료</span>':'-')+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  document.getElementById('plan-preview2').innerHTML=h;
+}
+function renderScan2TargetList(){
+  var el=document.getElementById('scan2-target-list');
+  if(!planData2.length){el.innerHTML='<div class="empty">등록된 출하 계획이 없습니다. 데이터 등록 탭에서 먼저 등록하세요.</div>';return;}
+  var h='';
+  planData2.forEach(function(p,i){
+    var done=verifyLog2.some(function(v){return v.partNo===p.partNo&&v.pn===p.pn;});
+    h+='<div style="display:flex;align-items:center;gap:10px;border:1px solid var(--bd);border-radius:var(--r);padding:10px 14px;margin-bottom:8px;background:var(--sf)">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-weight:700;font-size:13px">'+p.partNo+(done?' <span class="bsm done" style="margin-left:6px">완료</span>':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--tx2);margin-top:2px">'+(p.modelName||'-')+' &middot; PN: '+(p.pn||'-')+' &middot; 계획수량: '+(p.qty||'-')+'</div>'
+      +'</div>'
+      +'<button class="btn btn-g" style="padding:8px 16px;font-size:12px" onclick="startVerify2('+i+')">검증 시작</button>'
+      +'</div>';
+  });
+  el.innerHTML=h;
+}
+function startVerify2(idx){
+  var p=planData2[idx];
+  if(!p)return;
+  currentVerify2={partNo:p.partNo,modelName:p.modelName,pn:p.pn,qty:p.qty,invoiceNo:p.invoiceNo,scannedQty:0,boxes:[],lastPN:null,lastPNMatch:false};
+  document.getElementById('scan2-select-area').style.display='none';
+  document.getElementById('scan2-verify-area').style.display='block';
+  document.getElementById('scan2-target-info').innerHTML=
+    '<b>'+p.partNo+'</b> &middot; '+(p.modelName||'-')+'<br>등록 PN: <b>'+(p.pn||'-')+'</b> &middot; 목표 수량: <b>'+(p.qty||0)+'</b>';
+  document.getElementById('scan2-target-qty').textContent=p.qty||0;
+  document.getElementById('scan2-running-qty').textContent='0';
+  document.getElementById('scan2-box-log').innerHTML='<div class="empty">스캔 기록 없음</div>';
+  document.getElementById('scan2-alert-bar').className='alert';
+  document.getElementById('scan2-pn-in').value='';
+  document.getElementById('scan2-qty-in').value='';
+  setTimeout(function(){document.getElementById('scan2-pn-in').focus();},50);
+}
+function scan2Alert(cls,msg){
+  var bar=document.getElementById('scan2-alert-bar');
+  bar.className='alert show '+cls;
+  document.getElementById('scan2-alert-ico').textContent=cls==='ok'?'✓':cls==='ng'?'✕':'⊘';
+  document.getElementById('scan2-alert-msg').textContent=msg;
+}
+function scan2PN(){
+  if(!currentVerify2)return;
+  var raw=document.getElementById('scan2-pn-in').value.trim();
+  if(!raw)return;
+  var match=(raw===currentVerify2.pn);
+  currentVerify2.lastPN=raw;
+  currentVerify2.lastPNMatch=match;
+  if(match) scan2Alert('ok','PN 일치 — '+raw);
+  else scan2Alert('ng','PN 불일치! 등록 PN('+currentVerify2.pn+') ≠ 스캔('+raw+')');
+  document.getElementById('scan2-pn-in').value='';
+  document.getElementById('scan2-qty-in').focus();
+}
+function scan2InvalidInputPopup(fieldId,msg){
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  var box=document.createElement('div');
+  box.style.cssText='background:var(--bg);border:1.5px solid var(--red);border-radius:var(--r);padding:28px 32px;min-width:280px;max-width:400px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.4)';
+  var ico=document.createElement('div');
+  ico.style.cssText='font-size:28px;color:var(--red);margin-bottom:10px';
+  ico.textContent='\u26A0';
+  var txt=document.createElement('div');
+  txt.style.cssText='font-size:14px;color:var(--tx);white-space:pre-line;line-height:1.7;margin-bottom:20px';
+  txt.textContent=msg;
+  var btn=document.createElement('button');
+  btn.className='btn btn-r';
+  btn.style.cssText='padding:10px 40px;font-size:14px;font-weight:600';
+  btn.textContent='확인';
+  btn.onclick=function(){
+    document.body.removeChild(overlay);
+    var f=document.getElementById(fieldId);
+    if(f){f.value='';f.focus();}
+  };
+  box.appendChild(ico);box.appendChild(txt);box.appendChild(btn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  btn.focus();
+}
+function scan2QTY(){
+  if(!currentVerify2)return;
+  var raw=document.getElementById('scan2-qty-in').value.trim();
+  if(!raw)return;
+  if(!/^[0-9]+$/.test(raw)||parseInt(raw,10)<=0||parseInt(raw,10)>100000){
+    scan2InvalidInputPopup('scan2-qty-in','잘못된 정보입니다.\n다시 입력해 주세요.');
+    return;
+  }
+  var qty=parseInt(raw,10);
+  if(currentVerify2.lastPN===null){
+    scan2Alert('ng','먼저 PN을 스캔해 주세요');
+    return;
+  }
+  currentVerify2.boxes.push({time:new Date().toLocaleTimeString('ko-KR'),pn:currentVerify2.lastPN,match:currentVerify2.lastPNMatch,qty:qty});
+  currentVerify2.scannedQty+=qty;
+  currentVerify2.lastPN=null;
+  currentVerify2.lastPNMatch=false;
+  document.getElementById('scan2-running-qty').textContent=currentVerify2.scannedQty;
+  renderScan2BoxLog();
+  document.getElementById('scan2-qty-in').value='';
+  document.getElementById('scan2-pn-in').focus();
+}
+function renderScan2BoxLog(){
+  var el=document.getElementById('scan2-box-log');
+  if(!currentVerify2.boxes.length){el.innerHTML='<div class="empty">스캔 기록 없음</div>';return;}
+  var h='<table class="log-tbl"><thead><tr><th>#</th><th>스캔 PN</th><th>PN 일치</th><th>수량</th></tr></thead><tbody>';
+  currentVerify2.boxes.forEach(function(b,i){
+    h+='<tr style="border-left:3px solid '+(b.match?'var(--green)':'var(--red)')+'">'
+      +'<td style="font-size:11px">'+(i+1)+'</td>'
+      +'<td style="font-size:11px;font-family:Consolas,monospace">'+b.pn+'</td>'
+      +'<td>'+(b.match?'<span class="badge ok">일치</span>':'<span class="badge ng">불일치</span>')+'</td>'
+      +'<td style="text-align:center">'+b.qty+'</td>'
+      +'</tr>';
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+function showResultPopup2(msg,onOk){
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  var box=document.createElement('div');
+  box.style.cssText='background:var(--bg);border:1.5px solid var(--green);border-radius:var(--r);padding:28px 32px;min-width:300px;max-width:420px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.4)';
+  var ttl=document.createElement('div');
+  ttl.style.cssText='font-size:15px;font-weight:700;color:var(--tx);margin-bottom:14px';
+  ttl.textContent='점검 결과';
+  var txt=document.createElement('div');
+  txt.style.cssText='font-size:13px;color:var(--tx);white-space:pre-line;line-height:1.8;margin-bottom:20px;text-align:left';
+  txt.innerHTML=msg;
+  var btn=document.createElement('button');
+  btn.className='btn btn-g';
+  btn.style.cssText='padding:10px 40px;font-size:14px;font-weight:600';
+  btn.textContent='확인';
+  btn.onclick=function(){
+    document.body.removeChild(overlay);
+    if(onOk)onOk();
+  };
+  box.appendChild(ttl);box.appendChild(txt);box.appendChild(btn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  btn.focus();
+}
+function finishScan2(){
+  if(!currentVerify2)return;
+  if(!currentVerify2.boxes.length){alert('스캔 기록이 없습니다');return;}
+  var qtyMatch=currentVerify2.qty>0?(currentVerify2.scannedQty===currentVerify2.qty):true;
+  var pnMatch=currentVerify2.boxes.every(function(b){return b.match;});
+  var allOk=qtyMatch&&pnMatch;
+  var msg='품번 : <b>'+currentVerify2.partNo+'</b><br>'
+    +'PN : <b>'+currentVerify2.pn+'</b><br>'
+    +'점검 수량 : <b>'+currentVerify2.scannedQty+'</b> / 계획 수량 : <b>'+(currentVerify2.qty||0)+'</b><br><br>'
+    +(allOk?'<span style="color:var(--green)">계획 대비 일치합니다. 수고하셨습니다.</span>':'<span style="color:var(--red)">계획 대비 불일치합니다. 재확인이 필요합니다.</span>');
+  showResultPopup2(msg,function(){
+    verifyLog2.unshift({
+      time:new Date().toLocaleString('ko-KR'),
+      partNo:currentVerify2.partNo,
+      modelName:currentVerify2.modelName,
+      pn:currentVerify2.pn,
+      invoiceNo:currentVerify2.invoiceNo,
+      planQty:currentVerify2.qty,
+      scannedQty:currentVerify2.scannedQty,
+      boxCount:currentVerify2.boxes.length,
+      pnMatch:pnMatch,
+      qtyMatch:qtyMatch,
+      result:allOk?'일치':'불일치',
+      boxes:currentVerify2.boxes.slice()
+    });
+    currentVerify2=null;
+    document.getElementById('scan2-verify-area').style.display='none';
+    document.getElementById('scan2-select-area').style.display='block';
+    renderScan2TargetList();
+    renderPlanPreview2();
+    renderLog2();
+  });
+}
+function cancelScan2(){
+  if(!confirm('진행 중인 스캔 기록을 취소할까요?'))return;
+  currentVerify2=null;
+  document.getElementById('scan2-verify-area').style.display='none';
+  document.getElementById('scan2-select-area').style.display='block';
+}
+function renderLog2(){
+  if(!verifyLog2.length){document.getElementById('log-area2').innerHTML='<div class="empty">이력 없음</div>';return;}
+  var h='<table class="log-tbl"><thead><tr><th>점검시간</th><th>품번</th><th>모델명</th><th>스캔 PN</th><th>구분</th><th>수량</th><th>PN일치</th><th>결과</th></tr></thead><tbody>';
+  verifyLog2.forEach(function(l){
+    var ok=l.result==='일치';
+    var boxes=l.boxes||[];
+    boxes.forEach(function(b,i){
+      h+='<tr style="border-left:3px solid '+(b.match?'var(--green)':'var(--red)')+'">'
+        +'<td style="white-space:nowrap;font-size:11px">'+(b.time||'-')+'</td>'
+        +'<td>'+l.partNo+'</td>'
+        +'<td>'+(l.modelName||'-')+'</td>'
+        +'<td style="font-size:11px;font-family:Consolas,monospace">'+b.pn+'</td>'
+        +'<td style="font-size:11px;color:var(--tx2)">박스 '+(i+1)+'/'+boxes.length+'</td>'
+        +'<td style="text-align:center">'+b.qty+'</td>'
+        +'<td>'+(b.match?'<span class="badge ok">일치</span>':'<span class="badge ng">불일치</span>')+'</td>'
+        +'<td>-</td>'
+        +'</tr>';
+    });
+    h+='<tr style="border-left:3px solid '+(ok?'var(--green)':'var(--red)')+';background:var(--sf2)">'
+      +'<td style="white-space:nowrap;font-size:11px;font-weight:700">'+l.time+'</td>'
+      +'<td style="font-weight:700">'+l.partNo+'</td>'
+      +'<td style="font-weight:700">'+(l.modelName||'-')+'</td>'
+      +'<td style="font-size:11px">'+(l.pn||'-')+'</td>'
+      +'<td style="font-weight:700">요약 (계획 '+(l.planQty||0)+')</td>'
+      +'<td style="text-align:center;font-weight:700">'+l.scannedQty+'</td>'
+      +'<td>'+(l.pnMatch?'<span class="badge ok">일치</span>':'<span class="badge ng">불일치</span>')+'</td>'
+      +'<td>'+(ok?'<span class="badge ok">일치</span>':'<span class="badge ng">불일치</span>')+'</td>'
+      +'</tr>';
+  });
+  h+='</tbody></table>';
+  document.getElementById('log-area2').innerHTML=h;
+}
+function exportXlsx2(){
+  if(!verifyLog2.length)return;
+  var rows=[['점검시간','품번','모델명','스캔PN','구분','수량','PN일치','결과','INVOICE NO']];
+  verifyLog2.forEach(function(l){
+    var boxes=l.boxes||[];
+    boxes.forEach(function(b,i){
+      rows.push([b.time||'',l.partNo,l.modelName,b.pn,'박스 '+(i+1)+'/'+boxes.length,b.qty,b.match?'O':'X','',l.invoiceNo||'']);
+    });
+    rows.push([l.time,l.partNo,l.modelName,l.pn,'요약(계획 '+(l.planQty||0)+')',l.scannedQty,l.pnMatch?'O':'X',l.result,l.invoiceNo||'']);
+  });
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:18},{wch:22},{wch:20},{wch:16},{wch:8},{wch:8},{wch:8},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'점검결과');
+  XLSX.writeFile(wb,'점검결과_'+new Date().toLocaleDateString('ko-KR').replace(/\.\s*/g,'').replace(/\.$/,'')+'.xlsx');
+}
+function clearLog2(){
+  if(!confirm('이력을 초기화할까요?'))return;
+  verifyLog2=[];
+  renderLog2();
+  renderPlanPreview2();
+}
+function tab2(n){
+  ['setup2','scan2','log2'].forEach(function(name){
+    var idx={'setup2':0,'scan2':1,'log2':2}[name];
+    var btn=document.querySelectorAll('#ship2-tabs .tab')[idx];
+    var panel=document.getElementById('panel-'+name);
+    if(btn)btn.classList.toggle('active',name===n);
+    if(panel)panel.classList.toggle('active',name===n);
+  });
+  if(n==='scan2'&&currentVerify2)setTimeout(function(){var inp=document.getElementById('scan2-pn-in');if(inp)inp.focus();},50);
+}
+
 var currentMode='ship';
 (function(){
   var d=new Date();
@@ -835,24 +1203,36 @@ function showIqcAlert(msg, callback){
 function switchMode(mode){
   currentMode=mode;
   var shipTabs=document.getElementById('ship-tabs');
+  var ship2Tabs=document.getElementById('ship2-tabs');
   var statBar=document.getElementById('stat-bar');
-  var allPanels=['setup','scan','log','iqc','defect'];
+  var allPanels=['setup','scan','log','setup2','scan2','log2','iqc','defect'];
   var btnShip=document.getElementById('mode-btn-ship');
+  var btnShip2=document.getElementById('mode-btn-ship2');
   var btnIqc=document.getElementById('mode-btn-iqc');
   var btnDef=document.getElementById('mode-btn-def');
   allPanels.forEach(function(p){var el=document.getElementById('panel-'+p);if(el){el.classList.remove('active');}});
   if(btnShip){btnShip.className='mode-btn';btnShip.style.borderColor='';btnShip.style.color='';}
+  if(btnShip2){btnShip2.className='mode-btn';btnShip2.style.borderColor='';btnShip2.style.color='';}
   if(btnIqc){btnIqc.className='mode-btn';btnIqc.style.borderColor='';btnIqc.style.color='';}
   if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='';btnDef.style.color='';}
   if(mode==='ship'){
     if(btnShip)btnShip.className='mode-btn active-ship';
     if(shipTabs)shipTabs.style.display='flex';
+    if(ship2Tabs)ship2Tabs.style.display='none';
     if(statBar)statBar.style.display='grid';
     var ps=document.getElementById('panel-setup');if(ps)ps.classList.add('active');
     document.querySelectorAll('#ship-tabs .tab').forEach(function(t,i){t.classList.toggle('active',i===0);});
+  } else if(mode==='ship2'){
+    if(btnShip2)btnShip2.className='mode-btn active-ship2';
+    if(shipTabs)shipTabs.style.display='none';
+    if(ship2Tabs)ship2Tabs.style.display='flex';
+    if(statBar)statBar.style.display='none';
+    var ps2=document.getElementById('panel-setup2');if(ps2)ps2.classList.add('active');
+    document.querySelectorAll('#ship2-tabs .tab').forEach(function(t,i){t.classList.toggle('active',i===0);});
   } else if(mode==='iqc'){
     if(btnIqc)btnIqc.className='mode-btn active-iqc';
     if(shipTabs)shipTabs.style.display='none';
+    if(ship2Tabs)ship2Tabs.style.display='none';
     if(statBar)statBar.style.display='none';
     var pi=document.getElementById('panel-iqc');if(pi)pi.classList.add('active');
     loadStdTable();
@@ -860,6 +1240,7 @@ function switchMode(mode){
   } else if(mode==='defect'){
     if(btnDef)btnDef.className='mode-btn active-def';
     if(shipTabs)shipTabs.style.display='none';
+    if(ship2Tabs)ship2Tabs.style.display='none';
     if(statBar)statBar.style.display='none';
     var pd=document.getElementById('panel-defect');if(pd)pd.classList.add('active');
     setTimeout(function(){var inp=document.getElementById('defect-sn-input');if(inp)inp.focus();},50);
