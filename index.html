@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2608270003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -349,12 +349,18 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <button class="btn btn-gray" onclick="testDefConn()" style="padding:5px 12px;font-size:11px">연결 테스트</button>
   </div>
   <div class="sl2" style="margin-bottom:10px">출고 후 불량 이력 조회</div>
-  <div class="info-box">SET SN을 입력하면 구글 시트에서 불량 이력을 조회합니다.</div>
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <input type="text" id="defect-sn-input" placeholder="SET SN 입력 (예: 643EELT53D0912)"
-      style="flex:1;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-family:inherit;font-size:14px;font-weight:600;padding:11px 14px;outline:none"
-      onkeydown="if(event.key==='Enter')searchDefect()">
-    <button class="btn btn-amber" onclick="searchDefect()" style="padding:11px 20px">조회</button>
+  <div class="info-box">SET SN을 한 줄에 하나씩 입력하면 일괄 조회합니다.</div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <textarea id="defect-sn-input" placeholder="SET SN 입력 (한 줄에 하나씩)&#10;652FAIT17A0867&#10;652FAIT17A1105&#10;652FAIT17A0323"
+      style="flex:1;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-family:Consolas,monospace;font-size:13px;font-weight:600;padding:11px 14px;outline:none;resize:vertical;min-height:110px;line-height:1.8"></textarea>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-amber" onclick="searchDefectBulk()" style="padding:11px 20px;white-space:nowrap">조회</button>
+      <button class="btn btn-gray" onclick="document.getElementById('defect-sn-input').value=''" style="padding:11px 20px;white-space:nowrap">초기화</button>
+    </div>
+  </div>
+  <div id="defect-bulk-status" style="margin-bottom:8px"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button class="btn btn-b" id="defect-excel-btn" onclick="exportDefectXlsx()" style="padding:7px 16px;font-size:12px;display:none">&#x1F4E5; Excel 다운로드</button>
   </div>
   <div id="defect-result"><div class="empty">SET SN을 입력하고 조회해 주세요</div></div>
 </div>
@@ -2023,34 +2029,95 @@ function testDefConn(){
     .then(function(){dot.className='conn-dot ok';sta.textContent='연결 성공';})
     .catch(function(err){dot.className='conn-dot ng';sta.textContent='실패: '+err.message;});
 }
-function searchDefect(){
-  var sn=document.getElementById('defect-sn-input').value.trim().toUpperCase();
-  if(!sn){alert('SET SN을 입력해 주세요');return;}
+var _defectResults=[];
+
+function searchDefect(){searchDefectBulk();}
+
+function searchDefectBulk(){
+  var raw=document.getElementById('defect-sn-input').value;
+  var sns=raw.split(/[\n,;]+/).map(function(s){return s.trim().toUpperCase();}).filter(function(s){return s.length>0;});
+  if(!sns.length){alert('SET SN을 입력해 주세요');return;}
+  _defectResults=[];
   var re=document.getElementById('defect-result');
-  re.innerHTML='<div class="empty">조회 중...</div>';
-  fetch(WEBAPP_URL+'?sn='+encodeURIComponent(sn))
-    .then(function(r){return r.json();})
-    .then(function(json){
-      if(json.error){re.innerHTML='<div style="color:var(--red);font-size:13px;padding:16px">⚠ '+json.error+'</div>';return;}
-      var data=json.data;
-      var keys=Object.keys(data);
-      if(!keys.length){
-        re.innerHTML='<div style="background:var(--rd);border:1.5px solid var(--red);border-radius:var(--r);padding:16px;text-align:center">'
-          +'<div style="font-size:14px;color:var(--red);font-weight:700">❌ 조회 결과 없음</div>'
-          +'<div style="font-size:13px;color:var(--tx2);margin-top:6px">SET SN <b>'+sn+'</b>에 해당하는 이력이 없습니다</div></div>';
-        return;
-      }
-      var html='<div style="background:var(--gd);border:1.5px solid var(--green);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">'
-        +'<span style="color:var(--green);font-size:16px">✓</span>'
-        +'<span style="font-size:13px;color:var(--tx)">SET SN: <b style="font-family:Consolas,monospace;color:var(--green)">'+sn+'</b> 조회 완료</span></div>'
-        +'<div class="defect-grid">';
-      keys.forEach(function(k){
-        html+='<div class="dc"><div class="dc-l">'+k+'</div><div class="dc-v" style="color:var(--tx)">'+(data[k]||'-')+'</div></div>';
+  var status=document.getElementById('defect-bulk-status');
+  var excelBtn=document.getElementById('defect-excel-btn');
+  re.innerHTML='';
+  excelBtn.style.display='none';
+  status.innerHTML='<div style="font-size:12px;color:var(--tx2)">조회 중... 0 / '+sns.length+'</div>';
+  var done=0;
+  var headers=null;
+  function queryOne(sn){
+    return fetch(WEBAPP_URL+'?sn='+encodeURIComponent(sn))
+      .then(function(r){return r.json();})
+      .then(function(json){
+        done++;
+        status.innerHTML='<div style="font-size:12px;color:var(--tx2)">조회 중... '+done+' / '+sns.length+'</div>';
+        if(json.error||!json.data){
+          _defectResults.push({sn:sn,data:null});
+        } else {
+          if(!headers&&Object.keys(json.data).length) headers=Object.keys(json.data);
+          _defectResults.push({sn:sn,data:json.data});
+        }
+      }).catch(function(){
+        done++;
+        _defectResults.push({sn:sn,data:null});
       });
-      html+='</div><div style="padding:8px 12px;border-radius:var(--r);border:1px solid var(--amber);background:var(--ad);font-size:11px;color:var(--amber)">'
-        +'⚠ 오류가 발생할 수 있어서 한개정도는 기존과 동일하게 확인해서 교차 검증하세요</div>';
-      re.innerHTML=html;
-    }).catch(function(err){re.innerHTML='<div style="color:var(--red);font-size:13px;text-align:center;padding:20px">⚠ 조회 실패: '+err.message+'</div>';});
+  }
+  var chain=Promise.resolve();
+  sns.forEach(function(sn){chain=chain.then(function(){return queryOne(sn);});});
+  chain.then(function(){
+    renderDefectTable(headers);
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 조회 완료 — 총 '+_defectResults.length+'건</div>';
+    if(_defectResults.length>0) excelBtn.style.display='inline-flex';
+  });
+}
+
+function renderDefectTable(headers){
+  var re=document.getElementById('defect-result');
+  if(!_defectResults.length){re.innerHTML='<div class="empty">결과 없음</div>';return;}
+  if(!headers){
+    _defectResults.forEach(function(r){if(r.data&&!headers) headers=Object.keys(r.data);});
+  }
+  if(!headers) headers=[];
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:600px"><thead><tr>'
+    +'<th style="white-space:nowrap">SET SN</th>';
+  headers.forEach(function(h){html+='<th style="white-space:nowrap">'+h+'</th>';});
+  html+='</tr></thead><tbody>';
+  _defectResults.forEach(function(r){
+    var ok=r.data&&Object.keys(r.data).length>0;
+    html+='<tr>';
+    html+='<td style="font-family:Consolas,monospace;font-size:12px;color:'+(ok?'var(--green)':'var(--red)')+'">'+r.sn+'</td>';
+    if(ok){
+      headers.forEach(function(h){html+='<td style="font-size:12px">'+(r.data[h]||'-')+'</td>';});
+    } else {
+      html+='<td colspan="'+headers.length+'" style="font-size:12px;color:var(--tx3);text-align:center">결과 없음</td>';
+    }
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='<div style="margin-top:10px;padding:8px 12px;border-radius:var(--r);border:1px solid var(--amber);background:var(--ad);font-size:11px;color:var(--amber)">⚠ 오류가 발생할 수 있어서 기존과 동일하게 교차 검증하세요</div>';
+  re.innerHTML=html;
+}
+
+function exportDefectXlsx(){
+  if(!_defectResults.length){alert('조회 결과가 없습니다');return;}
+  var headers=null;
+  _defectResults.forEach(function(r){if(r.data&&!headers) headers=Object.keys(r.data);});
+  if(!headers) headers=[];
+  var rows=[['SET SN'].concat(headers)];
+  _defectResults.forEach(function(r){
+    var row=[r.sn];
+    if(r.data&&Object.keys(r.data).length){
+      headers.forEach(function(h){row.push(r.data[h]||'');});
+    } else {
+      headers.forEach(function(){row.push('결과없음');});
+    }
+    rows.push(row);
+  });
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb,'불량이력',ws);
+  XLSX.writeFile(wb,'불량이력_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 document.addEventListener('keydown',function(e){
   if(currentMode==='ship'){
