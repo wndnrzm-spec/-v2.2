@@ -119,6 +119,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .dc-l{font-size:10px;color:var(--tx2);margin-bottom:4px}
 .dc-v{font-size:13px;font-weight:600}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -127,8 +128,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100004)</span></div>
-      <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100006)</span></div>
+      <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
@@ -145,7 +146,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <span class="ico">&#x1F4E6;</span>출하 검증 시스템 2
   </button>
   <button id="mode-btn-iqc" class="mode-btn" onclick="switchMode('iqc')">
-    <span class="ico">&#x1F50D;</span>IQC 중점검사
+    <span class="ico">&#x1F50D;</span>IQC
   </button>
   <button id="mode-btn-def" class="mode-btn" onclick="switchMode('defect')">
     <span class="ico">&#x26A0;</span>출고 후 불량 이력 조회
@@ -398,6 +399,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 
   <div class="flcd-panel active" id="flcd-panel-detail">
     <div class="info-box">전체 모델 합산 기준, 선택한 기간 단위별 투입/불량 추이입니다.</div>
+    <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:12px"><canvas id="chart-detail" height="90"></canvas></div>
     <div id="sum-result-detail"><div class="empty">새로고침을 눌러주세요</div></div>
   </div>
   <div class="flcd-panel" id="flcd-panel-bymodel" style="display:none">
@@ -406,6 +408,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
   <div class="flcd-panel" id="flcd-panel-trend" style="display:none">
     <div class="info-box">모델을 하나 골라 그 모델의 기간별 투입/불량 추이를 보여줍니다.</div>
+    <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:12px"><canvas id="chart-trend" height="90"></canvas></div>
     <div id="sum-result-trend"><div class="empty">모델을 선택해주세요</div></div>
   </div>
 </div>
@@ -2251,6 +2254,44 @@ function catHeaderCells_(cats){
   return h;
 }
 
+function catCell_(count, input){
+  var r = input ? count/input : 0;
+  return '<td style="font-size:12px;text-align:center">'+count+'<div style="font-size:10px;color:var(--tx3)">'+pctFmt_(r)+'</div></td>';
+}
+
+var _chartDetail=null;
+var _chartTrend=null;
+
+function drawComboChart_(canvasId, chartVarName, labels, cats, dataByPeriod){
+  var ctx=document.getElementById(canvasId);
+  if(!ctx || typeof Chart==='undefined') return null;
+  var palette=['#00e676','#ff9800','#2196f3','#e91e63','#9c27b0','#795548','#607d8b'];
+  var datasets=cats.map(function(c,i){
+    return {
+      type:'bar', label:c, stack:'defect',
+      data:dataByPeriod.map(function(d){return d.defects[c]||0;}),
+      backgroundColor:palette[i%palette.length]
+    };
+  });
+  datasets.push({
+    type:'line', label:'총불량률(%)', yAxisID:'y1',
+    data:dataByPeriod.map(function(d){return +(d.totalRate*100).toFixed(2);}),
+    borderColor:'#ffd54f', backgroundColor:'#ffd54f', tension:0.3, pointRadius:3
+  });
+  return new Chart(ctx, {
+    data:{labels:labels, datasets:datasets},
+    options:{
+      responsive:true,
+      plugins:{legend:{labels:{color:'#cfd3da', font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#9aa0aa'}, grid:{color:'rgba(255,255,255,.05)'}},
+        y:{stacked:true, ticks:{color:'#9aa0aa'}, grid:{color:'rgba(255,255,255,.05)'}, title:{display:true,text:'불량수',color:'#9aa0aa'}},
+        y1:{position:'right', ticks:{color:'#ffd54f'}, grid:{display:false}, title:{display:true,text:'불량률(%)',color:'#ffd54f'}}
+      }
+    }
+  });
+}
+
 // ① 투입 후 상세 — 전체 모델 합산, 기간 추이
 function renderOverallTrend(){
   var re=document.getElementById('sum-result-detail');
@@ -2258,6 +2299,11 @@ function renderOverallTrend(){
   var cats=_summaryData.categories;
   var periods=_summaryData.periods;
   if(!periods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
+
+  if(_chartDetail){_chartDetail.destroy();_chartDetail=null;}
+  var chartData=periods.map(function(p){return _summaryData.data[p].total;});
+  _chartDetail=drawComboChart_('chart-detail', '_chartDetail', periods, cats, chartData);
+
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
     +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
     +catHeaderCells_(cats)
@@ -2266,7 +2312,7 @@ function renderOverallTrend(){
     var t=_summaryData.data[p].total;
     html+='<tr><td style="font-size:12px;font-weight:600">'+p+'</td>';
     html+='<td style="font-size:12px;text-align:center">'+t.input+'</td>';
-    cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(t.defects[c]||0)+'</td>';});
+    cats.forEach(function(c){html+=catCell_(t.defects[c]||0, t.input);});
     html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+t.totalDefect+'</td>';
     html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(t.totalRate)+'</td>';
     html+='</tr>';
@@ -2292,7 +2338,7 @@ function renderSummaryTable(){
     html+='<td style="font-size:12px;font-weight:600">'+row.model+'</td>';
     html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
     html+='<td style="font-size:12px;text-align:center">'+pctFmt_(row.share)+'</td>';
-    cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(row.defects[c]||0)+'</td>';});
+    cats.forEach(function(c){html+=catCell_(row.defects[c]||0, row.input);});
     html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+row.totalDefect+'</td>';
     html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(row.totalRate)+'</td>';
     html+='</tr>';
@@ -2301,7 +2347,7 @@ function renderSummaryTable(){
   html+='<td style="font-size:12px">총 투입수</td>';
   html+='<td style="font-size:12px;text-align:center">'+pd.total.input+'</td>';
   html+='<td style="font-size:12px;text-align:center">100%</td>';
-  cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(pd.total.defects[c]||0)+'</td>';});
+  cats.forEach(function(c){html+=catCell_(pd.total.defects[c]||0, pd.total.input);});
   html+='<td style="font-size:12px;text-align:center">'+pd.total.totalDefect+'</td>';
   html+='<td style="font-size:12px;text-align:center">'+pctFmt_(pd.total.totalRate)+'</td>';
   html+='</tr>';
@@ -2318,6 +2364,15 @@ function renderModelTrend(){
   if(!model){re.innerHTML='<div class="empty">모델을 선택해주세요</div>';return;}
   var cats=_summaryData.categories;
   var periods=_summaryData.periods;
+
+  var chartData=periods.map(function(p){
+    var row=null;
+    _summaryData.data[p].rows.forEach(function(r){if(r.model===model) row=r;});
+    return row || {input:0, defects:{}, totalRate:0};
+  });
+  if(_chartTrend){_chartTrend.destroy();_chartTrend=null;}
+  _chartTrend=drawComboChart_('chart-trend', '_chartTrend', periods, cats, chartData);
+
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
     +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
     +catHeaderCells_(cats)
@@ -2328,7 +2383,7 @@ function renderModelTrend(){
     html+='<tr><td style="font-size:12px;font-weight:600">'+p+'</td>';
     if(row){
       html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
-      cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(row.defects[c]||0)+'</td>';});
+      cats.forEach(function(c){html+=catCell_(row.defects[c]||0, row.input);});
       html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+row.totalDefect+'</td>';
       html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(row.totalRate)+'</td>';
     } else {
