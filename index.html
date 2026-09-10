@@ -26,7 +26,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .sdot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .mode-btn{padding:16px 8px;border-radius:var(--r);border:1.5px solid var(--bd2);background:var(--sf);color:var(--tx2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:80px}
 .mode-btn .ico{font-size:22px}
 .mode-btn.active-ship{border-color:var(--green);background:var(--green);color:#000}
@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100004)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC 중점검사 &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -149,6 +149,9 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </button>
   <button id="mode-btn-def" class="mode-btn" onclick="switchMode('defect')">
     <span class="ico">&#x26A0;</span>출고 후 불량 이력 조회
+  </button>
+  <button id="mode-btn-sum" class="mode-btn" onclick="switchMode('summary')">
+    <span class="ico">&#x1F4CA;</span>FLCD 공정
   </button>
 </div>
 
@@ -363,6 +366,48 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <button class="btn btn-b" id="defect-excel-btn" onclick="exportDefectXlsx()" style="padding:7px 16px;font-size:12px;display:none">&#x1F4E5; Excel 다운로드</button>
   </div>
   <div id="defect-result"><div class="empty">SET SN을 입력하고 조회해 주세요</div></div>
+</div>
+
+<!-- 요약 대시보드 -->
+<div class="panel" id="panel-summary">
+  <div class="conn-bar">
+    <div class="conn-dot" id="sum-conn-dot"></div>
+    <span class="conn-label">구글 시트 연결 상태</span>
+    <span class="conn-status" id="sum-conn-status">미확인</span>
+    <button class="btn btn-gray" onclick="testSumConn()" style="padding:5px 12px;font-size:11px">연결 테스트</button>
+  </div>
+  <div class="sl2" style="margin-bottom:10px">FLCD 공정</div>
+
+  <div class="tabs" id="flcd-tabs">
+    <button class="tab active" onclick="flcdTab('detail')">&#x2460; 투입 후 상세</button>
+    <button class="tab" onclick="flcdTab('bymodel')">&#x2461; 모델별 요약</button>
+    <button class="tab" onclick="flcdTab('trend')">&#x2462; 투입 후(모델 별)</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;margin-top:10px">
+    <select id="sum-period-type" onchange="loadSummary()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
+      <option value="month">월별</option>
+      <option value="week">주차별</option>
+      <option value="year">년도별</option>
+    </select>
+    <select id="sum-period-value" onchange="renderSummaryTable()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:120px"></select>
+    <select id="sum-model-select" onchange="renderModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px"></select>
+    <button class="btn btn-g" onclick="loadSummary()" style="padding:9px 18px">새로고침</button>
+  </div>
+  <div id="sum-status" style="margin-bottom:8px"></div>
+
+  <div class="flcd-panel active" id="flcd-panel-detail">
+    <div class="info-box">전체 모델 합산 기준, 선택한 기간 단위별 투입/불량 추이입니다.</div>
+    <div id="sum-result-detail"><div class="empty">새로고침을 눌러주세요</div></div>
+  </div>
+  <div class="flcd-panel" id="flcd-panel-bymodel" style="display:none">
+    <div class="info-box">기간을 하나 골라 그 기간의 모델별 투입/불량 현황을 보여줍니다. 신규 모델도 자동으로 반영됩니다.</div>
+    <div id="sum-result-bymodel"><div class="empty">기간을 선택하고 새로고침을 눌러주세요</div></div>
+  </div>
+  <div class="flcd-panel" id="flcd-panel-trend" style="display:none">
+    <div class="info-box">모델을 하나 골라 그 모델의 기간별 투입/불량 추이를 보여줍니다.</div>
+    <div id="sum-result-trend"><div class="empty">모델을 선택해주세요</div></div>
+  </div>
 </div>
 
 <div id="photo-lightbox" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;flex-direction:column" onclick="if(event.target===this)closePhotoLightbox()">
@@ -1211,16 +1256,18 @@ function switchMode(mode){
   var shipTabs=document.getElementById('ship-tabs');
   var ship2Tabs=document.getElementById('ship2-tabs');
   var statBar=document.getElementById('stat-bar');
-  var allPanels=['setup','scan','log','setup2','scan2','log2','iqc','defect'];
+  var allPanels=['setup','scan','log','setup2','scan2','log2','iqc','defect','summary'];
   var btnShip=document.getElementById('mode-btn-ship');
   var btnShip2=document.getElementById('mode-btn-ship2');
   var btnIqc=document.getElementById('mode-btn-iqc');
   var btnDef=document.getElementById('mode-btn-def');
+  var btnSum=document.getElementById('mode-btn-sum');
   allPanels.forEach(function(p){var el=document.getElementById('panel-'+p);if(el){el.classList.remove('active');}});
   if(btnShip){btnShip.className='mode-btn';btnShip.style.borderColor='';btnShip.style.color='';}
   if(btnShip2){btnShip2.className='mode-btn';btnShip2.style.borderColor='';btnShip2.style.color='';}
   if(btnIqc){btnIqc.className='mode-btn';btnIqc.style.borderColor='';btnIqc.style.color='';}
   if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='';btnDef.style.color='';}
+  if(btnSum){btnSum.className='mode-btn';btnSum.style.borderColor='';btnSum.style.color='';}
   if(mode==='ship'){
     if(btnShip)btnShip.className='mode-btn active-ship';
     if(shipTabs)shipTabs.style.display='flex';
@@ -1250,6 +1297,13 @@ function switchMode(mode){
     if(statBar)statBar.style.display='none';
     var pd=document.getElementById('panel-defect');if(pd)pd.classList.add('active');
     setTimeout(function(){var inp=document.getElementById('defect-sn-input');if(inp)inp.focus();},50);
+  } else if(mode==='summary'){
+    if(btnSum)btnSum.className='mode-btn active-def';
+    if(shipTabs)shipTabs.style.display='none';
+    if(ship2Tabs)ship2Tabs.style.display='none';
+    if(statBar)statBar.style.display='none';
+    var psum=document.getElementById('panel-summary');if(psum)psum.classList.add('active');
+    if(!_summaryData) loadSummary();
   }
 }
 function tab(n){
@@ -2119,6 +2173,173 @@ function exportDefectXlsx(){
   XLSX.utils.book_append_sheet(wb,ws,'불량이력');
   XLSX.writeFile(wb,'불량이력_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
+
+var WEBAPP_URL_SUMMARY='https://script.google.com/macros/s/AKfycbyZ-wld2hkwa_1Id-eJCA1OrHhOBHr68HMU0czNIQJSNBlE-j5xswz2dSx3_IGAu-Mgow/exec';
+var _summaryData=null;
+var _flcdActiveTab='detail';
+
+function testSumConn(){
+  var dot=document.getElementById('sum-conn-dot');
+  var sta=document.getElementById('sum-conn-status');
+  dot.className='conn-dot checking';sta.textContent='테스트 중...';
+  fetch(WEBAPP_URL_SUMMARY+'?action=summary&periodType=month')
+    .then(function(r){return r.json();})
+    .then(function(){dot.className='conn-dot ok';sta.textContent='연결 성공';})
+    .catch(function(err){dot.className='conn-dot ng';sta.textContent='실패: '+err.message;});
+}
+
+function flcdTab(name){
+  _flcdActiveTab=name;
+  ['detail','bymodel','trend'].forEach(function(n){
+    var panel=document.getElementById('flcd-panel-'+n);
+    if(panel) panel.style.display=(n===name?'block':'none');
+  });
+  document.querySelectorAll('#flcd-tabs .tab').forEach(function(btn,i){
+    var names=['detail','bymodel','trend'];
+    btn.classList.toggle('active',names[i]===name);
+  });
+  document.getElementById('sum-period-type').style.display=(name==='bymodel'?'':'none');
+  document.getElementById('sum-period-value').style.display=(name==='bymodel'?'':'none');
+  document.getElementById('sum-model-select').style.display=(name==='trend'?'':'none');
+  renderAllViews();
+}
+
+function loadSummary(){
+  var pt=document.getElementById('sum-period-type').value;
+  var status=document.getElementById('sum-status');
+  status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
+  fetch(WEBAPP_URL_SUMMARY+'?action=summary&periodType='+pt)
+    .then(function(r){return r.json();})
+    .then(function(json){
+      if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';return;}
+      _summaryData=json;
+      var sel=document.getElementById('sum-period-value');
+      sel.innerHTML='';
+      json.periods.forEach(function(p){
+        var opt=document.createElement('option');opt.value=p;opt.textContent=p;sel.appendChild(opt);
+      });
+      if(json.periods.length) sel.value=json.periods[json.periods.length-1];
+
+      var modelSet={};
+      json.periods.forEach(function(p){
+        json.data[p].rows.forEach(function(row){modelSet[row.model]=true;});
+      });
+      var modelNames=Object.keys(modelSet).sort();
+      var msel=document.getElementById('sum-model-select');
+      msel.innerHTML='';
+      modelNames.forEach(function(m){
+        var opt=document.createElement('option');opt.value=m;opt.textContent=m;msel.appendChild(opt);
+      });
+
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개</div>';
+      renderAllViews();
+    }).catch(function(err){
+      status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
+    });
+}
+
+function renderAllViews(){
+  if(_flcdActiveTab==='detail') renderOverallTrend();
+  else if(_flcdActiveTab==='bymodel') renderSummaryTable();
+  else if(_flcdActiveTab==='trend') renderModelTrend();
+}
+
+function pctFmt_(v){return (v*100).toFixed(1)+'%';}
+
+function catHeaderCells_(cats){
+  var h='';cats.forEach(function(c){h+='<th style="white-space:nowrap">'+c+'</th>';});
+  return h;
+}
+
+// ① 투입 후 상세 — 전체 모델 합산, 기간 추이
+function renderOverallTrend(){
+  var re=document.getElementById('sum-result-detail');
+  if(!_summaryData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var cats=_summaryData.categories;
+  var periods=_summaryData.periods;
+  if(!periods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
+    +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
+    +catHeaderCells_(cats)
+    +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">불량률(전체)</th></tr></thead><tbody>';
+  periods.forEach(function(p){
+    var t=_summaryData.data[p].total;
+    html+='<tr><td style="font-size:12px;font-weight:600">'+p+'</td>';
+    html+='<td style="font-size:12px;text-align:center">'+t.input+'</td>';
+    cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(t.defects[c]||0)+'</td>';});
+    html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+t.totalDefect+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(t.totalRate)+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+// ② 모델별 요약 — 선택한 기간 하나, 모델별 비교 (기존 로직)
+function renderSummaryTable(){
+  var re=document.getElementById('sum-result-bymodel');
+  if(!_summaryData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var p=document.getElementById('sum-period-value').value;
+  var pd=_summaryData.data[p];
+  if(!pd||!pd.rows.length){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
+  var cats=_summaryData.categories;
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
+    +'<th style="white-space:nowrap">모델</th><th style="white-space:nowrap">투입수</th><th style="white-space:nowrap">투입점유율</th>'
+    +catHeaderCells_(cats)
+    +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">총불량률</th></tr></thead><tbody>';
+  pd.rows.forEach(function(row){
+    html+='<tr>';
+    html+='<td style="font-size:12px;font-weight:600">'+row.model+'</td>';
+    html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
+    html+='<td style="font-size:12px;text-align:center">'+pctFmt_(row.share)+'</td>';
+    cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(row.defects[c]||0)+'</td>';});
+    html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+row.totalDefect+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(row.totalRate)+'</td>';
+    html+='</tr>';
+  });
+  html+='<tr style="background:var(--sf2);font-weight:700">';
+  html+='<td style="font-size:12px">총 투입수</td>';
+  html+='<td style="font-size:12px;text-align:center">'+pd.total.input+'</td>';
+  html+='<td style="font-size:12px;text-align:center">100%</td>';
+  cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(pd.total.defects[c]||0)+'</td>';});
+  html+='<td style="font-size:12px;text-align:center">'+pd.total.totalDefect+'</td>';
+  html+='<td style="font-size:12px;text-align:center">'+pctFmt_(pd.total.totalRate)+'</td>';
+  html+='</tr>';
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+// ③ 투입 후(모델 별) — 모델 하나 골라 기간별 추이
+function renderModelTrend(){
+  var re=document.getElementById('sum-result-trend');
+  if(!_summaryData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var msel=document.getElementById('sum-model-select');
+  var model=msel.value;
+  if(!model){re.innerHTML='<div class="empty">모델을 선택해주세요</div>';return;}
+  var cats=_summaryData.categories;
+  var periods=_summaryData.periods;
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
+    +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
+    +catHeaderCells_(cats)
+    +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">총불량률</th></tr></thead><tbody>';
+  periods.forEach(function(p){
+    var row=null;
+    _summaryData.data[p].rows.forEach(function(r){if(r.model===model) row=r;});
+    html+='<tr><td style="font-size:12px;font-weight:600">'+p+'</td>';
+    if(row){
+      html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
+      cats.forEach(function(c){html+='<td style="font-size:12px;text-align:center">'+(row.defects[c]||0)+'</td>';});
+      html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+row.totalDefect+'</td>';
+      html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(row.totalRate)+'</td>';
+    } else {
+      html+='<td colspan="'+(cats.length+3)+'" style="font-size:12px;color:var(--tx3);text-align:center">생산 없음</td>';
+    }
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
 document.addEventListener('keydown',function(e){
   if(currentMode==='ship'){
     if(e.key==='F1'){e.preventDefault();tab('setup');}
