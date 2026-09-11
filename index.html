@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100018)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100019)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2490,7 +2490,7 @@ function renderOverallTrend(){
     var totalsMap={};
 
     if(_selectedYear==='all'){
-      // 연도 비교 모드 — 합계만 (월별은 스케일이 너무 작아서 제외)
+      // 원본 엑셀처럼 연도(고정)+CUM+월을 한 화면에 다 같이 표시 (막대가 %기준이라 스케일 문제 없음)
       fixedLabels.forEach(function(label){
         var h=history.filter(function(x){return x.year+'년'===label;})[0];
         periods.push(label); totalsMap[label]=h;
@@ -2500,6 +2500,7 @@ function renderOverallTrend(){
         var yearPeriods=grouped.byYear[y];
         totalsMap[cumKey]=sumTotals_(yearPeriods.map(function(p){return _summaryData.data[p].total;}));
         periods.push(cumKey);
+        yearPeriods.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
       });
     } else if(history.some(function(h){return h.year===_selectedYear;})){
       // 레거시 연도 — 월별 세부 없이 연간 합계 한 줄만
@@ -2507,8 +2508,11 @@ function renderOverallTrend(){
       var h=history.filter(function(x){return x.year===_selectedYear;})[0];
       periods.push(label); totalsMap[label]=h;
     } else if(grouped.byYear[_selectedYear]){
-      // 특정 연도 상세 모드 — CUM 빼고 월별만 크게 비교
+      // 특정 연도만 골랐을 때 — 그 연도 CUM+월만
+      var cumKey2=_selectedYear+'년 CUM';
       var yearPeriods2=grouped.byYear[_selectedYear];
+      totalsMap[cumKey2]=sumTotals_(yearPeriods2.map(function(p){return _summaryData.data[p].total;}));
+      periods.push(cumKey2);
       yearPeriods2.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
     }
 
@@ -2595,11 +2599,8 @@ function renderModelTrend(){
     var cumKey=y+'년 CUM';
     var yearPeriods=grouped.byYear[y];
     rowMap[cumKey]=sumTotals_(yearPeriods.map(rowFor));
-    if(_selectedYear==='all'){
-      periods.push(cumKey);
-    } else {
-      yearPeriods.forEach(function(p){ rowMap[p]=rowFor(p); periods.push(p); });
-    }
+    periods.push(cumKey);
+    yearPeriods.forEach(function(p){ rowMap[p]=rowFor(p); periods.push(p); });
   });
 
   var chartLabels=periods.map(displayLabel_);
