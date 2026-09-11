@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100009)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100010)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -376,6 +376,15 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <span class="conn-status" id="sum-conn-status">미확인</span>
     <button class="btn btn-gray" onclick="testSumConn()" style="padding:5px 12px;font-size:11px">연결 테스트</button>
   </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
+    <div style="flex:1;font-size:12px;color:var(--tx2)">
+      현재 반영된 생산일보: <span id="current-file-name" style="color:var(--tx);font-weight:600">확인 중...</span>
+    </div>
+    <input type="file" id="daily-file-input" accept=".xlsx" style="display:none" onchange="uploadDailyFile(this.files[0])">
+    <button class="btn btn-g" id="upload-file-btn" onclick="document.getElementById('daily-file-input').click()" style="padding:7px 14px;font-size:12px">파일 업로드</button>
+  </div>
+
   <div class="sl2" style="margin-bottom:10px">FLCD 공정</div>
 
   <div class="tabs" id="flcd-tabs">
@@ -1305,6 +1314,7 @@ function switchMode(mode){
     if(ship2Tabs)ship2Tabs.style.display='none';
     if(statBar)statBar.style.display='none';
     var psum=document.getElementById('panel-summary');if(psum)psum.classList.add('active');
+    loadFileStatus();
     if(!_summaryData) loadSummary();
   }
 }
@@ -2204,6 +2214,54 @@ function flcdTab(name){
   document.getElementById('sum-period-value').style.display=(name==='bymodel'?'':'none');
   document.getElementById('sum-model-select').style.display=(name==='trend'?'':'none');
   renderAllViews();
+}
+
+function loadFileStatus(){
+  var el=document.getElementById('current-file-name');
+  fetch(WEBAPP_URL_SUMMARY+'?action=status')
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(j.fileName){
+        var t=j.fileTime?new Date(j.fileTime).toLocaleString('ko-KR'):'';
+        el.textContent=j.fileName+' — '+(j.rowCount||0)+'행 반영 ('+t+')';
+      } else {
+        el.textContent='아직 반영된 파일이 없습니다';
+      }
+    }).catch(function(){ el.textContent='확인 실패'; });
+}
+
+function uploadDailyFile(file){
+  if(!file) return;
+  var el=document.getElementById('current-file-name');
+  var btn=document.getElementById('upload-file-btn');
+  btn.disabled=true;
+  el.textContent='업로드 및 재구축 중... ('+file.name+') — 데이터 양에 따라 몇 분 걸릴 수 있습니다';
+  var reader=new FileReader();
+  reader.onload=function(){
+    var base64Data=reader.result.split(',')[1];
+    fetch(WEBAPP_URL_SUMMARY, {
+      method:'POST',
+      body: JSON.stringify({fileName:file.name, base64Data:base64Data})
+    }).then(function(r){return r.json();})
+      .then(function(j){
+        btn.disabled=false;
+        if(j.success){
+          el.textContent=j.fileName+' — '+j.rowCount+'행 반영 완료';
+          _summaryData=null;
+          loadSummary();
+        } else {
+          el.textContent='업로드 실패: '+j.error;
+        }
+      }).catch(function(err){
+        btn.disabled=false;
+        el.textContent='업로드 실패: '+err.message;
+      });
+  };
+  reader.onerror=function(){
+    btn.disabled=false;
+    el.textContent='파일 읽기 실패';
+  };
+  reader.readAsDataURL(file);
 }
 
 function loadSummary(){
