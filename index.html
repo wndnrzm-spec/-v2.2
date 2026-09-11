@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100010)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100013)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2276,7 +2276,7 @@ function loadSummary(){
       var sel=document.getElementById('sum-period-value');
       sel.innerHTML='';
       json.periods.forEach(function(p){
-        var opt=document.createElement('option');opt.value=p;opt.textContent=p;sel.appendChild(opt);
+        var opt=document.createElement('option');opt.value=p;opt.textContent=displayLabel_(p);sel.appendChild(opt);
       });
       if(json.periods.length) sel.value=json.periods[json.periods.length-1];
 
@@ -2391,31 +2391,95 @@ function buildCombo_(containerId, periods, cats, dataByPeriod){
 }
 
 // ① 투입 후 상세 — 전체 모델 합산, 기간 추이
+// 확정된 과거 연도 실적은 서버(연도별확정실적 시트)에서 가져옴 — 연도가 바뀔 때마다 자동으로 늘어남
+var _historyData=null; // {year, input, totalDefect, totalRate, defects} 배열
+
+function loadHistory_(cb){
+  if(_historyData){ cb(_historyData); return; }
+  fetch(WEBAPP_URL_SUMMARY+'?action=history')
+    .then(function(r){return r.json();})
+    .then(function(j){ _historyData=j.years||[]; cb(_historyData); })
+    .catch(function(){ _historyData=[]; cb(_historyData); });
+}
+
+function sumTotals_(list){
+  var input=0, totalDefect=0, defects={};
+  list.forEach(function(t){
+    input+=t.input||0;
+    totalDefect+=t.totalDefect||0;
+    Object.keys(t.defects||{}).forEach(function(c){ defects[c]=(defects[c]||0)+(t.defects[c]||0); });
+  });
+  return {input:input, totalDefect:totalDefect, totalRate: input?totalDefect/input:0, defects:defects};
+}
+
+// "26년 01월" / "26년 05주차" 형태의 내부 키를 연도별로 묶는다 (27년이 와도 자동으로 새 그룹 생성됨)
+function groupPeriodsByYear_(periodKeys){
+  var re=/^(\d+)년 (\d+)(월|주차)$/;
+  var byYear={};
+  periodKeys.forEach(function(p){
+    var m=p.match(re);
+    if(!m) return;
+    var y=m[1];
+    byYear[y]=byYear[y]||[];
+    byYear[y].push(p);
+  });
+  var years=Object.keys(byYear).sort(function(a,b){return a-b;});
+  years.forEach(function(y){ byYear[y].sort(); }); // 0-padding 되어 있어서 문자열 정렬 = 시간순
+  return {years:years, byYear:byYear};
+}
+
+// 내부 키(정렬용, 0-padding) -> 화면 표시용 라벨 ("26년 01월" -> "26년 1월")
+function displayLabel_(p){
+  return p.replace(/(\d+)년 0*(\d+)(월|주차)/, function(_,y,n,u){return y+'년 '+n+u;});
+}
+
 function renderOverallTrend(){
   var re=document.getElementById('sum-result-detail');
   if(!_summaryData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var cats=_summaryData.categories;
-  var periods=_summaryData.periods;
-  if(!periods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
+  var monthPeriods=_summaryData.periods;
+  if(!monthPeriods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
 
-  var chartData=periods.map(function(p){return _summaryData.data[p].total;});
-  buildCombo_('chart-detail', periods, cats, chartData);
+  loadHistory_(function(history){
+    var grouped=groupPeriodsByYear_(monthPeriods);
+    var fixedLabels=history.map(function(h){return h.year+'년';}).sort();
+    var periods=[]; // 내부 키 순서대로
+    var totalsMap={};
+    fixedLabels.forEach(function(label){
+      var h=history.filter(function(x){return x.year+'년'===label;})[0];
+      periods.push(label); totalsMap[label]=h;
+    });
+    grouped.years.forEach(function(y){
+      var cumKey=y+'년 CUM';
+      var yearPeriods=grouped.byYear[y];
+      totalsMap[cumKey]=sumTotals_(yearPeriods.map(function(p){return _summaryData.data[p].total;}));
+      periods.push(cumKey);
+      yearPeriods.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
+    });
 
-  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
-    +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
-    +catHeaderCells_(cats)
-    +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">불량률(전체)</th></tr></thead><tbody>';
-  periods.forEach(function(p){
-    var t=_summaryData.data[p].total;
-    html+='<tr><td style="font-size:12px;font-weight:600">'+p+'</td>';
-    html+='<td style="font-size:12px;text-align:center">'+t.input+'</td>';
-    cats.forEach(function(c){html+=catCell_(t.defects[c]||0, t.input);});
-    html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+t.totalDefect+'</td>';
-    html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(t.totalRate)+'</td>';
-    html+='</tr>';
+    var chartLabels=periods.map(displayLabel_);
+    var chartData=periods.map(function(p){return totalsMap[p];});
+    buildCombo_('chart-detail', chartLabels, cats, chartData);
+
+    var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
+      +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
+      +catHeaderCells_(cats)
+      +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">불량률(전체)</th></tr></thead><tbody>';
+    periods.forEach(function(p){
+      var t=totalsMap[p];
+      var isFixed=fixedLabels.indexOf(p)!==-1;
+      var isCum=/CUM$/.test(p);
+      html+='<tr'+(isFixed?' style="opacity:.7"':(isCum?' style="background:var(--sf2);font-weight:700"':''))+'>';
+      html+='<td style="font-size:12px;font-weight:600">'+displayLabel_(p)+'</td>';
+      html+='<td style="font-size:12px;text-align:center">'+t.input+'</td>';
+      cats.forEach(function(c){html+=catCell_(t.defects[c]||0, t.input);});
+      html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+t.totalDefect+'</td>';
+      html+='<td style="font-size:12px;text-align:center;color:'+(t.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(t.totalRate)+'</td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+    re.innerHTML=html;
   });
-  html+='</tbody></table></div>';
-  re.innerHTML=html;
 }
 
 // ② 모델별 요약 — 선택한 기간 하나, 모델별 비교 (기존 로직)
@@ -2452,7 +2516,7 @@ function renderSummaryTable(){
   re.innerHTML=html;
 }
 
-// ③ 투입 후(모델 별) — 모델 하나 골라 기간별 추이
+// ③ 투입 후(모델 별) — 모델 하나 골라 기간별 추이 (연도 자동 구분)
 function renderModelTrend(){
   var re=document.getElementById('sum-result-trend');
   if(!_summaryData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
@@ -2460,31 +2524,42 @@ function renderModelTrend(){
   var model=msel.value;
   if(!model){re.innerHTML='<div class="empty">모델을 선택해주세요</div>';return;}
   var cats=_summaryData.categories;
-  var periods=_summaryData.periods;
+  var monthPeriods=_summaryData.periods;
 
-  var chartData=periods.map(function(p){
+  function rowFor(p){
     var row=null;
     _summaryData.data[p].rows.forEach(function(r){if(r.model===model) row=r;});
-    return row || {input:0, defects:{}, totalRate:0};
+    return row || {input:0, defects:{}, totalDefect:0, totalRate:0};
+  }
+
+  var grouped=groupPeriodsByYear_(monthPeriods);
+  var periods=[];
+  var rowMap={};
+  grouped.years.forEach(function(y){
+    var cumKey=y+'년 CUM';
+    var yearPeriods=grouped.byYear[y];
+    rowMap[cumKey]=sumTotals_(yearPeriods.map(rowFor));
+    periods.push(cumKey);
+    yearPeriods.forEach(function(p){ rowMap[p]=rowFor(p); periods.push(p); });
   });
-  buildCombo_('chart-trend', periods, cats, chartData);
+
+  var chartLabels=periods.map(displayLabel_);
+  var chartData=periods.map(function(p){return rowMap[p];});
+  buildCombo_('chart-trend', chartLabels, cats, chartData);
 
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:900px"><thead><tr>'
     +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
     +catHeaderCells_(cats)
     +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">총불량률</th></tr></thead><tbody>';
   periods.forEach(function(p){
-    var row=null;
-    _summaryData.data[p].rows.forEach(function(r){if(r.model===model) row=r;});
-    html+='<tr><td style="font-size:12px;font-weight:600">'+p+'</td>';
-    if(row){
-      html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
-      cats.forEach(function(c){html+=catCell_(row.defects[c]||0, row.input);});
-      html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+row.totalDefect+'</td>';
-      html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(row.totalRate)+'</td>';
-    } else {
-      html+='<td colspan="'+(cats.length+3)+'" style="font-size:12px;color:var(--tx3);text-align:center">생산 없음</td>';
-    }
+    var row=rowMap[p];
+    var isCum=/CUM$/.test(p);
+    html+='<tr'+(isCum?' style="background:var(--sf2);font-weight:700"':'')+'>';
+    html+='<td style="font-size:12px;font-weight:600">'+displayLabel_(p)+'</td>';
+    html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
+    cats.forEach(function(c){html+=catCell_(row.defects[c]||0, row.input);});
+    html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+row.totalDefect+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:'+(row.totalDefect>0?'var(--red)':'var(--tx2)')+'">'+pctFmt_(row.totalRate)+'</td>';
     html+='</tr>';
   });
   html+='</tbody></table></div>';
