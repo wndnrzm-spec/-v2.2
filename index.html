@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140003)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2770,23 +2770,26 @@ function renderMappingTable(){
   var pd=_mappingData.data[p];
   if(!pd||!pd.rows.length){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
   var positions=_mappingData.positions;
-  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1600px"><thead><tr>'
-    +'<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">모델</th>'
-    +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">위치당 기대값</th>';
-  positions.forEach(function(pos){html+='<th style="white-space:nowrap">'+pos+'</th>';});
+  var models=pd.rows; // [{model,input,totalDefect,expected,counts,pValues}, ...]
+
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:'+(200+models.length*110)+'px"><thead><tr>'
+    +'<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">위치</th>';
+  models.forEach(function(m){html+='<th style="white-space:nowrap">'+m.model+'</th>';});
+  html+='</tr><tr>'
+    +'<td style="font-size:11px;color:var(--tx3);position:sticky;left:0;background:var(--sf2)">총불량수 / 위치당기대값</td>';
+  models.forEach(function(m){html+='<td style="font-size:11px;text-align:center;color:var(--tx3);white-space:nowrap">'+m.totalDefect+' / '+m.expected.toFixed(2)+'</td>';});
   html+='</tr></thead><tbody>';
-  pd.rows.forEach(function(row){
-    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+row.model+'</td>';
-    html+='<td style="font-size:12px;text-align:center">'+row.totalDefect+'</td>';
-    html+='<td style="font-size:12px;text-align:center;color:var(--tx3)">'+row.expected.toFixed(2)+'</td>';
-    positions.forEach(function(pos){
-      var cnt=row.counts[pos]||0;
-      var pv=row.pValues[pos];
+
+  positions.forEach(function(pos){
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+pos+'</td>';
+    models.forEach(function(m){
+      var cnt=m.counts[pos]||0;
+      var pv=m.pValues[pos];
       var bg='transparent', fg='var(--tx)';
       if(pv<0.01){ bg='rgba(244,67,54,.25)'; fg='#ff8a80'; }
       else if(pv<0.05){ bg='rgba(255,193,7,.2)'; fg='#ffd54f'; }
-      html+='<td style="text-align:center;background:'+bg+';color:'+fg+';font-size:12px;font-weight:700">'+cnt
-        +'<div style="font-size:10px;font-weight:400">p='+pv.toFixed(3)+'</div></td>';
+      html+='<td style="text-align:center;white-space:nowrap;background:'+bg+';color:'+fg+';font-size:12px;font-weight:700">'+cnt
+        +'<div style="font-size:10px;font-weight:400;white-space:nowrap">p='+pv.toFixed(3)+'</div></td>';
     });
     html+='</tr>';
   });
