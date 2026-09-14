@@ -26,7 +26,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .sdot{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.mode-btns{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .mode-btn{padding:16px 8px;border-radius:var(--r);border:1.5px solid var(--bd2);background:var(--sf);color:var(--tx2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:80px}
 .mode-btn .ico{font-size:22px}
 .mode-btn.active-ship{border-color:var(--green);background:var(--green);color:#000}
@@ -118,6 +118,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 .dc{background:var(--sf2);border-radius:8px;padding:10px 12px}
 .dc-l{font-size:10px;color:var(--tx2);margin-bottom:4px}
 .dc-v{font-size:13px;font-weight:600}
+@keyframes gtoast-spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -127,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140006)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -152,6 +153,9 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </button>
   <button id="mode-btn-sum" class="mode-btn" onclick="switchMode('summary')">
     <span class="ico">&#x1F4CA;</span>FLCD 공정
+  </button>
+  <button id="mode-btn-rework" class="mode-btn" onclick="switchMode('rework')">
+    <span class="ico">&#x1F527;</span>재검 Trend
   </button>
 </div>
 
@@ -457,6 +461,50 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       <select id="stor-month-select" onchange="renderStorageByModel()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:140px"></select>
     </div>
     <div id="stor-result-bymodel"><div class="empty">기간을 선택해주세요</div></div>
+  </div>
+</div>
+
+<!-- 재검 Trend -->
+<div class="panel" id="panel-rework">
+  <div class="conn-bar">
+    <div class="conn-dot" id="rw-conn-dot"></div>
+    <span class="conn-label">구글 시트 연결 상태</span>
+    <span class="conn-status" id="rw-conn-status">미확인</span>
+    <button class="btn btn-gray" onclick="testRwConn()" style="padding:5px 12px;font-size:11px">연결 테스트</button>
+  </div>
+  <div class="sl2" style="margin-bottom:10px">재검 Trend (패널 파손 재검 현황)</div>
+
+  <div class="tabs" id="rw-tabs">
+    <button class="tab active" onclick="rwTab('detail')">&#x2460; 전체 추이</button>
+    <button class="tab" onclick="rwTab('bymodel')">&#x2461; 모델별 비교</button>
+    <button class="tab" onclick="rwTab('trend')">&#x2462; 모델별 추이</button>
+  </div>
+
+  <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+    <select id="rw-period-type" onchange="loadReworkTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
+      <option value="week">주차별</option>
+      <option value="month">월별</option>
+      <option value="year">년도별</option>
+    </select>
+    <select id="rw-period-value" onchange="renderReworkByModel()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:140px"></select>
+    <select id="rw-model-select" onchange="loadReworkTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
+      <option value="">전체 모델</option>
+    </select>
+    <button class="btn btn-g" onclick="loadReworkTrend()" style="padding:9px 18px">새로고침</button>
+  </div>
+  <div id="rw-status" style="margin-bottom:8px"></div>
+
+  <div class="rw-panel active" id="rw-panel-detail">
+    <div class="info-box">전체 모델 합산 기준, 선택한 기간 단위별 공정 파손 / 재검 파손 추이입니다.</div>
+    <div id="rw-result-detail"><div class="empty">새로고침을 눌러주세요</div></div>
+  </div>
+  <div class="rw-panel" id="rw-panel-bymodel" style="display:none">
+    <div class="info-box">기간을 하나 골라 그 기간의 모델별 파손/재검 현황을 비교합니다.</div>
+    <div id="rw-result-bymodel"><div class="empty">기간을 선택해주세요</div></div>
+  </div>
+  <div class="rw-panel" id="rw-panel-trend" style="display:none">
+    <div class="info-box">모델을 하나 골라 그 모델의 기간별 파손/재검 추이를 봅니다.</div>
+    <div id="rw-result-trend"><div class="empty">모델을 선택해주세요</div></div>
   </div>
 </div>
 
@@ -1306,18 +1354,20 @@ function switchMode(mode){
   var shipTabs=document.getElementById('ship-tabs');
   var ship2Tabs=document.getElementById('ship2-tabs');
   var statBar=document.getElementById('stat-bar');
-  var allPanels=['setup','scan','log','setup2','scan2','log2','iqc','defect','summary'];
+  var allPanels=['setup','scan','log','setup2','scan2','log2','iqc','defect','summary','rework'];
   var btnShip=document.getElementById('mode-btn-ship');
   var btnShip2=document.getElementById('mode-btn-ship2');
   var btnIqc=document.getElementById('mode-btn-iqc');
   var btnDef=document.getElementById('mode-btn-def');
   var btnSum=document.getElementById('mode-btn-sum');
+  var btnRework=document.getElementById('mode-btn-rework');
   allPanels.forEach(function(p){var el=document.getElementById('panel-'+p);if(el){el.classList.remove('active');}});
   if(btnShip){btnShip.className='mode-btn';btnShip.style.borderColor='';btnShip.style.color='';}
   if(btnShip2){btnShip2.className='mode-btn';btnShip2.style.borderColor='';btnShip2.style.color='';}
   if(btnIqc){btnIqc.className='mode-btn';btnIqc.style.borderColor='';btnIqc.style.color='';}
   if(btnDef){btnDef.className='mode-btn';btnDef.style.borderColor='';btnDef.style.color='';}
   if(btnSum){btnSum.className='mode-btn';btnSum.style.borderColor='';btnSum.style.color='';}
+  if(btnRework){btnRework.className='mode-btn';btnRework.style.borderColor='';btnRework.style.color='';}
   if(mode==='ship'){
     if(btnShip)btnShip.className='mode-btn active-ship';
     if(shipTabs)shipTabs.style.display='flex';
@@ -1355,6 +1405,13 @@ function switchMode(mode){
     var psum=document.getElementById('panel-summary');if(psum)psum.classList.add('active');
     loadFileStatus();
     if(!_summaryData) loadSummary();
+  } else if(mode==='rework'){
+    if(btnRework)btnRework.className='mode-btn active-def';
+    if(shipTabs)shipTabs.style.display='none';
+    if(ship2Tabs)ship2Tabs.style.display='none';
+    if(statBar)statBar.style.display='none';
+    var prw=document.getElementById('panel-rework');if(prw)prw.classList.add('active');
+    if(!_reworkData) loadReworkTrend();
   }
 }
 function tab(n){
@@ -2264,6 +2321,22 @@ function flcdTab(name){
   }
 }
 
+function showLoadingToast_(msg){
+  var el=document.getElementById('global-toast');
+  if(!el){
+    el=document.createElement('div');
+    el.id='global-toast';
+    el.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--sf2);border:1.5px solid var(--bd2);border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700;color:var(--tx);z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.5);display:flex;align-items:center;gap:10px;';
+    document.body.appendChild(el);
+  }
+  el.innerHTML='<div style="width:16px;height:16px;border:2px solid var(--tx3);border-top-color:var(--green);border-radius:50%;animation:gtoast-spin .8s linear infinite"></div><span>'+msg+'</span>';
+  el.style.display='flex';
+}
+function hideLoadingToast_(){
+  var el=document.getElementById('global-toast');
+  if(el) el.style.display='none';
+}
+
 function loadFileStatus(){
   var el=document.getElementById('current-file-name');
   fetch(WEBAPP_URL_SUMMARY+'?action=status')
@@ -2317,11 +2390,11 @@ function uploadDailyFile(file){
 function loadSummary(){
   // ①③은 항상 월별 데이터를 써야 하므로, "새로고침"은 항상 periodType=month로 고정 조회
   var status=document.getElementById('sum-status');
-  status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
+  showLoadingToast_('데이터 불러오는 중...');
   fetch(WEBAPP_URL_SUMMARY+'?action=summary&periodType=month')
     .then(function(r){return r.json();})
     .then(function(json){
-      if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';return;}
+      if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';hideLoadingToast_();return;}
       _summaryData=json;
 
       var modelSet={};
@@ -2359,10 +2432,11 @@ function loadSummary(){
         });
         if([].slice.call(yearSel.options).some(function(o){return o.value===prevVal;})) yearSel.value=prevVal;
         _selectedYear=yearSel.value;
-        loadBymodelData_(renderAllViews);
+        loadBymodelData_(function(){ hideLoadingToast_(); renderAllViews(); });
       });
     }).catch(function(err){
       status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
+      hideLoadingToast_();
     });
 }
 
@@ -2744,7 +2818,7 @@ function loadMapping(){
   var pt=document.getElementById('map-period-type').value;
   var model=document.getElementById('map-model-select').value;
   var status=document.getElementById('map-status');
-  status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
+  showLoadingToast_('Mapping 데이터 불러오는 중...');
   var url=WEBAPP_URL_SUMMARY+'?action=mapping&periodType='+pt+(model?'&model='+encodeURIComponent(model):'');
   fetch(url).then(function(r){return r.json();}).then(function(json){
     _mappingData=json;
@@ -2757,9 +2831,11 @@ function loadMapping(){
     if(json.periods.indexOf(prevVal)!==-1) sel.value=prevVal;
     else if(json.periods.length) sel.value=json.periods[json.periods.length-1];
     status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개</div>';
+    hideLoadingToast_();
     renderMappingTable();
   }).catch(function(err){
     status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
+    hideLoadingToast_();
   });
 }
 
@@ -2772,7 +2848,8 @@ function renderMappingTable(){
   var positions=_mappingData.positions;
   var models=pd.rows; // [{model,input,totalDefect,expected,counts,pValues}, ...]
 
-  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:'+(200+models.length*110)+'px"><thead><tr>'
+  var html='<div style="margin-bottom:10px;font-size:11px;color:var(--tx3)">🟨 p&lt;0.05 (주의, 경향성 의심) · 🟥 p&lt;0.01 (조사 대상, 강한 경향성)</div>';
+  html+='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:'+(200+models.length*110)+'px"><thead><tr>'
     +'<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">위치</th>';
   models.forEach(function(m){html+='<th style="white-space:nowrap">'+m.model+'</th>';});
   html+='</tr><tr>'
@@ -2781,7 +2858,7 @@ function renderMappingTable(){
   html+='</tr></thead><tbody>';
 
   positions.forEach(function(pos){
-    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+pos+'</td>';
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+pos.replace(/번|사이/g,'')+'</td>';
     models.forEach(function(m){
       var cnt=m.counts[pos]||0;
       var pv=m.pValues[pos];
@@ -2794,7 +2871,6 @@ function renderMappingTable(){
     html+='</tr>';
   });
   html+='</tbody></table></div>';
-  html+='<div style="margin-top:8px;font-size:11px;color:var(--tx3)">🟨 p&lt;0.05 (주의, 경향성 의심) · 🟥 p&lt;0.01 (조사 대상, 강한 경향성)</div>';
   re.innerHTML=html;
 }
 
@@ -2802,7 +2878,7 @@ function renderMappingTable(){
 var _storageData=null;
 function loadStorage(){
   var status=document.getElementById('stor-status');
-  status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
+  showLoadingToast_('보관기간 데이터 불러오는 중...');
   fetch(WEBAPP_URL_SUMMARY+'?action=storage').then(function(r){return r.json();}).then(function(json){
     _storageData=json;
     var sel=document.getElementById('stor-month-select');
@@ -2814,10 +2890,12 @@ function loadStorage(){
     if(json.periods.indexOf(prevVal)!==-1) sel.value=prevVal;
     else if(json.periods.length) sel.value=json.periods[json.periods.length-1];
     status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개</div>';
+    hideLoadingToast_();
     renderStorageMonthly();
     renderStorageByModel();
   }).catch(function(err){
     status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
+    hideLoadingToast_();
   });
 }
 
@@ -2863,6 +2941,162 @@ function renderStorageByModel(){
   html+='<td style="font-size:12px;text-align:center">'+d.exceed+'</td>';
   html+='<td style="font-size:12px;text-align:center">'+(d.exceedRate*100).toFixed(1)+'%</td>';
   html+='</tr>';
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+// ===== 재검 Trend =====
+function testRwConn(){
+  var dot=document.getElementById('rw-conn-dot');
+  var sta=document.getElementById('rw-conn-status');
+  dot.className='conn-dot checking';sta.textContent='테스트 중...';
+  fetch(WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType=week')
+    .then(function(r){return r.json();})
+    .then(function(){dot.className='conn-dot ok';sta.textContent='연결 성공';})
+    .catch(function(err){dot.className='conn-dot ng';sta.textContent='실패: '+err.message;});
+}
+
+function rwTab(name){
+  _rwActiveTab=name;
+  ['detail','bymodel','trend'].forEach(function(n){
+    var panel=document.getElementById('rw-panel-'+n);
+    if(panel) panel.style.display=(n===name?'block':'none');
+  });
+  document.querySelectorAll('#rw-tabs .tab').forEach(function(btn,i){
+    var names=['detail','bymodel','trend'];
+    btn.classList.toggle('active',names[i]===name);
+  });
+  document.getElementById('rw-period-value').style.display=(name==='bymodel'?'':'none');
+  document.getElementById('rw-model-select').style.display=(name==='trend'?'':'none');
+  renderAllReworkViews();
+}
+
+var _reworkData=null;
+var _rwActiveTab='detail';
+
+function loadReworkTrend(){
+  var pt=document.getElementById('rw-period-type').value;
+  var model=document.getElementById('rw-model-select').value;
+  var status=document.getElementById('rw-status');
+  showLoadingToast_('재검 Trend 데이터 불러오는 중...');
+  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt+(model?'&model='+encodeURIComponent(model):'');
+  fetch(url).then(function(r){return r.json();}).then(function(json){
+    if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';hideLoadingToast_();return;}
+    _reworkData=json;
+
+    var pvSel=document.getElementById('rw-period-value');
+    var prevP=pvSel.value;
+    pvSel.innerHTML='';
+    json.periods.forEach(function(p){
+      var opt=document.createElement('option');opt.value=p;opt.textContent=displayLabel_(p);pvSel.appendChild(opt);
+    });
+    if(json.periods.indexOf(prevP)!==-1) pvSel.value=prevP;
+    else if(json.periods.length) pvSel.value=json.periods[json.periods.length-1];
+
+    var modelSet={};
+    json.periods.forEach(function(p){ json.data[p].rows.forEach(function(r){modelSet[r.model]=true;}); });
+    var modelNames=Object.keys(modelSet).sort();
+    var msel=document.getElementById('rw-model-select');
+    var prevM=msel.value;
+    msel.innerHTML='<option value="">전체 모델</option>';
+    modelNames.forEach(function(m){
+      var opt=document.createElement('option');opt.value=m;opt.textContent=m;msel.appendChild(opt);
+    });
+    if(modelNames.indexOf(prevM)!==-1) msel.value=prevM;
+
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개</div>';
+    hideLoadingToast_();
+    renderAllReworkViews();
+  }).catch(function(err){
+    status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
+    hideLoadingToast_();
+  });
+}
+
+function renderAllReworkViews(){
+  if(_rwActiveTab==='detail') renderReworkDetail();
+  else if(_rwActiveTab==='bymodel') renderReworkByModel();
+  else if(_rwActiveTab==='trend') renderReworkModelTrend();
+}
+
+var REWORK_COLS=['투입수','공정파손수','공정파손율','재검수','재검파손수','재검파손율','SET RTN+Aging파손수','SET RTN+Aging비율','유발공정파손수','유발공정비율'];
+
+function reworkHeaderRow_(firstColLabel){
+  var h='<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">'+firstColLabel+'</th>';
+  REWORK_COLS.forEach(function(c){h+='<th style="white-space:nowrap">'+c+'</th>';});
+  return h;
+}
+
+function reworkRowCells_(met){
+  function pct(v){return (v*100).toFixed(1)+'%';}
+  return '<td style="font-size:12px;text-align:center">'+met.input+'</td>'
+    +'<td style="font-size:12px;text-align:center;color:'+(met.crackCount>0?'var(--red)':'var(--tx2)')+'">'+met.crackCount+'</td>'
+    +'<td style="font-size:12px;text-align:center;font-weight:700">'+pct(met.crackRate)+'</td>'
+    +'<td style="font-size:12px;text-align:center">'+met.reworkCount+'</td>'
+    +'<td style="font-size:12px;text-align:center;color:'+(met.reworkCrackCount>0?'var(--red)':'var(--tx2)')+'">'+met.reworkCrackCount+'</td>'
+    +'<td style="font-size:12px;text-align:center;font-weight:700">'+pct(met.reworkCrackRate)+'</td>'
+    +'<td style="font-size:12px;text-align:center">'+met.setRtnAgingCrack+'</td>'
+    +'<td style="font-size:12px;text-align:center;font-weight:700">'+pct(met.setRtnAgingRate)+'</td>'
+    +'<td style="font-size:12px;text-align:center">'+met.processCrack+'</td>'
+    +'<td style="font-size:12px;text-align:center;font-weight:700">'+pct(met.processCrackRate)+'</td>';
+}
+
+// ① 전체 추이 — 기간별(주차/월/년) 전체 합산
+function renderReworkDetail(){
+  var re=document.getElementById('rw-result-detail');
+  if(!_reworkData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var periods=_reworkData.periods;
+  if(!periods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1200px"><thead><tr>'+reworkHeaderRow_('기간')+'</tr></thead><tbody>';
+  periods.forEach(function(p){
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+displayLabel_(p)+'</td>';
+    html+=reworkRowCells_(_reworkData.data[p].total);
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+// ② 모델별 비교 — 기간 하나 선택, 모델이 첫 열
+function renderReworkByModel(){
+  var re=document.getElementById('rw-result-bymodel');
+  if(!_reworkData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var p=document.getElementById('rw-period-value').value;
+  var pd=_reworkData.data[p];
+  if(!pd||!pd.rows.length){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1200px"><thead><tr>'+reworkHeaderRow_('모델')+'</tr></thead><tbody>';
+  pd.rows.forEach(function(row){
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+row.model+'</td>';
+    html+=reworkRowCells_(row);
+    html+='</tr>';
+  });
+  html+='<tr style="background:var(--sf2);font-weight:700">';
+  html+='<td style="font-size:12px;position:sticky;left:0;background:var(--sf2)">전체</td>';
+  html+=reworkRowCells_(pd.total);
+  html+='</tr>';
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+// ③ 모델별 추이 — 모델 하나 선택, 기간이 첫 열
+function renderReworkModelTrend(){
+  var re=document.getElementById('rw-result-trend');
+  if(!_reworkData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var model=document.getElementById('rw-model-select').value;
+  if(!model){re.innerHTML='<div class="empty">모델을 선택해주세요</div>';return;}
+  var periods=_reworkData.periods;
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1200px"><thead><tr>'+reworkHeaderRow_('기간')+'</tr></thead><tbody>';
+  periods.forEach(function(p){
+    var row=null;
+    _reworkData.data[p].rows.forEach(function(r){if(r.model===model) row=r;});
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+displayLabel_(p)+'</td>';
+    if(row){
+      html+=reworkRowCells_(row);
+    } else {
+      html+='<td colspan="'+REWORK_COLS.length+'" style="font-size:12px;color:var(--tx3);text-align:center">생산 없음</td>';
+    }
+    html+='</tr>';
+  });
   html+='</tbody></table></div>';
   re.innerHTML=html;
 }
