@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140008)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140009)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -387,6 +387,13 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     </div>
     <input type="file" id="daily-file-input" accept=".xlsx" style="display:none" onchange="uploadDailyFile(this.files[0])">
     <button class="btn btn-g" id="upload-file-btn" onclick="document.getElementById('daily-file-input').click()" style="padding:7px 14px;font-size:12px">파일 업로드</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
+    <div style="flex:1;font-size:12px;color:var(--tx2)">
+      Master(Panel↔Set SN 매핑) — 최신 MES/Lami 데이터로 갱신합니다. <span id="master-refresh-status" style="color:var(--tx);font-weight:600"></span>
+    </div>
+    <button class="btn btn-amber" id="master-refresh-btn" onclick="refreshMaster()" style="padding:7px 14px;font-size:12px">Master 갱신</button>
   </div>
 
   <div class="sl2" style="margin-bottom:10px">FLCD 공정</div>
@@ -2335,6 +2342,31 @@ function showLoadingToast_(msg){
 function hideLoadingToast_(){
   var el=document.getElementById('global-toast');
   if(el) el.style.display='none';
+}
+
+function refreshMaster(){
+  var btn=document.getElementById('master-refresh-btn');
+  var status=document.getElementById('master-refresh-status');
+  btn.disabled=true;
+  status.textContent='갱신 중... (몇 분 걸릴 수 있습니다)';
+  showLoadingToast_('Master 갱신 중... (최대 몇 분 소요될 수 있습니다)');
+  fetch(WEBAPP_URL_SUMMARY+'?action=refreshmaster')
+    .then(function(r){return r.json();})
+    .then(function(json){
+      btn.disabled=false;
+      hideLoadingToast_();
+      if(json.success){
+        status.textContent='완료 — Lami '+json.result.lamiRows+'행, MES '+json.result.mesRows+'행 ('+json.result.elapsedSec+'초 소요)';
+      } else {
+        status.textContent='실패: '+json.error;
+        alert('⚠ Master 갱신 실패\n\n'+json.error);
+      }
+    }).catch(function(err){
+      btn.disabled=false;
+      hideLoadingToast_();
+      status.textContent='실패: '+err.message;
+      alert('⚠ Master 갱신 실패\n\n'+err.message);
+    });
 }
 
 function loadFileStatus(){
