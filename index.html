@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100023)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100024)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -444,20 +444,20 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
 
   <div class="flcd-panel" id="flcd-panel-storage" style="display:none">
-    <div class="info-box">투입된 Panel이 Lami부터 합착 투입까지 며칠(개월) 창고에 있었는지, 기간별/모델별 분포입니다. 16개월 이상은 "장기재고"로 표시됩니다.</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
-      <select id="stor-period-type" onchange="loadStorage()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
-        <option value="month">월별</option>
-        <option value="week">주차별</option>
-        <option value="year">년도별</option>
-      </select>
-      <select id="stor-model-select" onchange="loadStorage()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
-        <option value="">전체 모델</option>
-      </select>
+    <div class="info-box">3개월을 넘겨 창고에 있었던 투입건이 얼마나 되는지 봅니다 (1~2개월은 정상 범위라 중요하지 않음).</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
       <button class="btn btn-g" onclick="loadStorage()" style="padding:9px 18px">새로고침</button>
     </div>
     <div id="stor-status" style="margin-bottom:8px"></div>
-    <div id="stor-result"><div class="empty">새로고침을 눌러주세요</div></div>
+
+    <div class="sl2" style="margin-bottom:8px">① 월별 보관기간 점유율</div>
+    <div id="stor-result-monthly"><div class="empty">새로고침을 눌러주세요</div></div>
+
+    <div class="sl2" style="margin:18px 0 8px">② 월 선택 — 모델별 3개월 초과율</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <select id="stor-month-select" onchange="renderStorageByModel()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:140px"></select>
+    </div>
+    <div id="stor-result-bymodel"><div class="empty">기간을 선택해주세요</div></div>
   </div>
 </div>
 
@@ -2335,7 +2335,7 @@ function loadSummary(){
       modelNames.forEach(function(m){
         var opt=document.createElement('option');opt.value=m;opt.textContent=m;msel.appendChild(opt);
       });
-      ['map-model-select','stor-model-select'].forEach(function(id){
+      ['map-model-select'].forEach(function(id){
         var sel=document.getElementById(id);
         var cur=sel.value;
         sel.innerHTML='<option value="">전체 모델</option>';
@@ -2789,45 +2789,71 @@ function renderMappingTable(){
   re.innerHTML=html;
 }
 
-// ⑤ 보관기간 분포
+// ⑤ 보관기간 분포 — 3개월 초과 여부만 본다 (항상 월별)
 var _storageData=null;
 function loadStorage(){
-  var pt=document.getElementById('stor-period-type').value;
-  var model=document.getElementById('stor-model-select').value;
   var status=document.getElementById('stor-status');
   status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
-  var url=WEBAPP_URL_SUMMARY+'?action=storage&periodType='+pt+(model?'&model='+encodeURIComponent(model):'');
-  fetch(url).then(function(r){return r.json();}).then(function(json){
+  fetch(WEBAPP_URL_SUMMARY+'?action=storage').then(function(r){return r.json();}).then(function(json){
     _storageData=json;
+    var sel=document.getElementById('stor-month-select');
+    var prevVal=sel.value;
+    sel.innerHTML='';
+    json.periods.forEach(function(p){
+      var opt=document.createElement('option');opt.value=p;opt.textContent=displayLabel_(p);sel.appendChild(opt);
+    });
+    if(json.periods.indexOf(prevVal)!==-1) sel.value=prevVal;
+    else if(json.periods.length) sel.value=json.periods[json.periods.length-1];
     status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개</div>';
-    renderStorageTable();
+    renderStorageMonthly();
+    renderStorageByModel();
   }).catch(function(err){
     status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
   });
 }
 
-function renderStorageTable(){
-  var re=document.getElementById('stor-result');
+function renderStorageMonthly(){
+  var re=document.getElementById('stor-result-monthly');
   if(!_storageData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
-  var buckets=_storageData.buckets;
   var periods=_storageData.periods;
   if(!periods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
-  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1100px"><thead><tr>'
-    +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>';
-  buckets.forEach(function(b){html+='<th style="white-space:nowrap">'+(b==='장기재고'?b:b+'개월')+'</th>';});
-  html+='</tr></thead><tbody>';
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:500px"><thead><tr>'
+    +'<th style="white-space:nowrap">기간</th><th style="white-space:nowrap">투입수</th>'
+    +'<th style="white-space:nowrap">3개월 초과</th><th style="white-space:nowrap">3개월 초과율</th></tr></thead><tbody>';
   periods.forEach(function(p){
     var d=_storageData.data[p];
     html+='<tr><td style="font-size:12px;font-weight:600">'+displayLabel_(p)+'</td>';
     html+='<td style="font-size:12px;text-align:center">'+d.input+'</td>';
-    buckets.forEach(function(b){
-      var rate=d.rates[b]||0;
-      var cnt=d.counts[b]||0;
-      var isLong=(b==='장기재고'&&cnt>0);
-      html+='<td style="font-size:12px;text-align:center;color:'+(isLong?'var(--red)':'var(--tx)')+'">'+(rate*100).toFixed(1)+'%<div style="font-size:10px;color:var(--tx3)">'+cnt+'</div></td>';
-    });
+    html+='<td style="font-size:12px;text-align:center;color:'+(d.exceed>0?'var(--red)':'var(--tx2)')+'">'+d.exceed+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:'+(d.exceed>0?'var(--red)':'var(--tx2)')+';font-weight:700">'+(d.exceedRate*100).toFixed(1)+'%</td>';
     html+='</tr>';
   });
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+function renderStorageByModel(){
+  var re=document.getElementById('stor-result-bymodel');
+  if(!_storageData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var p=document.getElementById('stor-month-select').value;
+  var d=_storageData.data[p];
+  if(!d||!d.rows.length){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:600px"><thead><tr>'
+    +'<th style="white-space:nowrap">모델</th><th style="white-space:nowrap">투입수</th>'
+    +'<th style="white-space:nowrap">3개월 초과</th><th style="white-space:nowrap">3개월 초과율</th></tr></thead><tbody>';
+  d.rows.forEach(function(row){
+    html+='<tr><td style="font-size:12px;font-weight:600">'+row.model+'</td>';
+    html+='<td style="font-size:12px;text-align:center">'+row.input+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:'+(row.exceed>0?'var(--red)':'var(--tx2)')+'">'+row.exceed+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:'+(row.exceed>0?'var(--red)':'var(--tx2)')+';font-weight:700">'+(row.exceedRate*100).toFixed(1)+'%</td>';
+    html+='</tr>';
+  });
+  html+='<tr style="background:var(--sf2);font-weight:700">';
+  html+='<td style="font-size:12px">전체</td>';
+  html+='<td style="font-size:12px;text-align:center">'+d.input+'</td>';
+  html+='<td style="font-size:12px;text-align:center">'+d.exceed+'</td>';
+  html+='<td style="font-size:12px;text-align:center">'+(d.exceedRate*100).toFixed(1)+'%</td>';
+  html+='</tr>';
   html+='</tbody></table></div>';
   re.innerHTML=html;
 }
