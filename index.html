@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140015)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -423,7 +423,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 
   <div class="flcd-panel active" id="flcd-panel-detail">
     <div class="info-box">전체 모델 합산 기준, 선택한 기간 단위별 투입/불량 추이입니다.</div>
-    <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:12px" id="chart-detail"></div>
+    <div style="position:relative;margin-bottom:12px"><button onclick="toggleFullscreen_(&#39;chart-detail&#39;)" style="position:absolute;top:8px;right:8px;z-index:5;background:var(--sf);border:1px solid var(--bd2);border-radius:6px;color:var(--tx2);font-size:11px;padding:4px 8px;cursor:pointer">&#x26F6; 전체화면</button><div style="background:var(--sf2);border-radius:10px;padding:12px" id="chart-detail"></div></div>
     <div id="sum-result-detail"><div class="empty">새로고침을 눌러주세요</div></div>
   </div>
   <div class="flcd-panel" id="flcd-panel-bymodel" style="display:none">
@@ -432,7 +432,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
   <div class="flcd-panel" id="flcd-panel-trend" style="display:none">
     <div class="info-box">모델을 하나 골라 그 모델의 기간별 투입/불량 추이를 보여줍니다.</div>
-    <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:12px" id="chart-trend"></div>
+    <div style="position:relative;margin-bottom:12px"><button onclick="toggleFullscreen_(&#39;chart-trend&#39;)" style="position:absolute;top:8px;right:8px;z-index:5;background:var(--sf);border:1px solid var(--bd2);border-radius:6px;color:var(--tx2);font-size:11px;padding:4px 8px;cursor:pointer">&#x26F6; 전체화면</button><div style="background:var(--sf2);border-radius:10px;padding:12px" id="chart-trend"></div></div>
     <div id="sum-result-trend"><div class="empty">모델을 선택해주세요</div></div>
   </div>
 
@@ -526,7 +526,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
   <div class="rw-panel" id="rw-panel-trend" style="display:none">
     <div class="info-box">모델을 하나 골라 그 모델의 기간별 파손/재검 추이를 봅니다.</div>
-    <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:12px" id="rw-chart-trend"></div>
+    <div style="position:relative;margin-bottom:12px"><button onclick="toggleFullscreen_(&#39;rw-chart-trend&#39;)" style="position:absolute;top:8px;right:8px;z-index:5;background:var(--sf);border:1px solid var(--bd2);border-radius:6px;color:var(--tx2);font-size:11px;padding:4px 8px;cursor:pointer">&#x26F6; 전체화면</button><div style="background:var(--sf2);border-radius:10px;padding:12px" id="rw-chart-trend"></div></div>
     <div id="rw-result-trend"><div class="empty">모델을 선택해주세요</div></div>
   </div>
 </div>
@@ -2345,6 +2345,18 @@ function flcdTab(name){
   }
 }
 
+function toggleFullscreen_(id){
+  var el=document.getElementById(id);
+  if(!el) return;
+  if(!document.fullscreenElement){
+    el.style.background='var(--sf2)';
+    el.style.padding='16px';
+    (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);
+  } else {
+    (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);
+  }
+}
+
 function showLoadingToast_(msg){
   var el=document.getElementById('global-toast');
   if(!el){
@@ -2642,7 +2654,7 @@ function buildCombo_(containerId, periods, cats, dataByPeriod){
   var gridSteps=Math.ceil(maxVal/gridStep);
   maxVal=gridSteps*gridStep; // 지정한 단위 눈금에 딱 맞게 상한 재조정
 
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px">';
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:'+W+'px;height:'+H+'px;display:block">';
   for(var g=0; g<=gridSteps; g++){
     var gv=g*gridStep;
     var yv=padT+chartH-(chartH*gv/maxVal);
@@ -3164,7 +3176,7 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod){
   var slot=chartW/n;
   var barW=Math.min(52, slot*0.55);
 
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px">';
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:'+W+'px;height:'+H+'px;display:block">';
   for(var g=0; g<=gridSteps; g++){
     var gv=g*gridStep;
     var yv=padT+chartH-(chartH*gv/maxBar);
