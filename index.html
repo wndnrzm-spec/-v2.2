@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140009)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140013)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -481,6 +481,21 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
   <div class="sl2" style="margin-bottom:10px">재검 Trend (패널 파손 재검 현황)</div>
 
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
+    <div style="flex:1;font-size:12px;color:var(--tx2)">
+      Master(Panel↔Set SN 매핑) — 최신 MES/Lami 데이터로 갱신합니다. <span id="master-refresh-status-rw" style="color:var(--tx);font-weight:600"></span>
+    </div>
+    <button class="btn btn-amber" id="master-refresh-btn-rw" onclick="refreshMaster('master-refresh-btn-rw','master-refresh-status-rw')" style="padding:7px 14px;font-size:12px">Master 갱신</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
+    <div style="flex:1;font-size:12px;color:var(--tx2)">
+      현재 반영된 재검 파일: <span id="rework-file-name" style="color:var(--tx);font-weight:600">확인 중...</span>
+    </div>
+    <input type="file" id="rework-file-input" accept=".xlsx" style="display:none" onchange="uploadReworkFile(this.files[0])">
+    <button class="btn btn-g" id="rework-upload-btn" onclick="document.getElementById('rework-file-input').click()" style="padding:7px 14px;font-size:12px">재검 파일 업로드</button>
+  </div>
+
   <div class="tabs" id="rw-tabs">
     <button class="tab active" onclick="rwTab('detail')">&#x2460; 전체 추이</button>
     <button class="tab" onclick="rwTab('bymodel')">&#x2461; 모델별 비교</button>
@@ -494,7 +509,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       <option value="year">년도별</option>
     </select>
     <select id="rw-period-value" onchange="renderReworkByModel()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:140px"></select>
-    <select id="rw-model-select" onchange="loadReworkTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
+    <select id="rw-model-select" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
       <option value="">전체 모델</option>
     </select>
     <button class="btn btn-g" onclick="loadReworkTrend()" style="padding:9px 18px">새로고침</button>
@@ -511,6 +526,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
   <div class="rw-panel" id="rw-panel-trend" style="display:none">
     <div class="info-box">모델을 하나 골라 그 모델의 기간별 파손/재검 추이를 봅니다.</div>
+    <div style="background:var(--sf2);border-radius:10px;padding:12px;margin-bottom:12px" id="rw-chart-trend"></div>
     <div id="rw-result-trend"><div class="empty">모델을 선택해주세요</div></div>
   </div>
 </div>
@@ -1418,6 +1434,7 @@ function switchMode(mode){
     if(ship2Tabs)ship2Tabs.style.display='none';
     if(statBar)statBar.style.display='none';
     var prw=document.getElementById('panel-rework');if(prw)prw.classList.add('active');
+    loadReworkFileStatus();
     if(!_reworkData) loadReworkTrend();
   }
 }
@@ -2344,9 +2361,11 @@ function hideLoadingToast_(){
   if(el) el.style.display='none';
 }
 
-function refreshMaster(){
-  var btn=document.getElementById('master-refresh-btn');
-  var status=document.getElementById('master-refresh-status');
+function refreshMaster(btnId, statusId){
+  btnId=btnId||'master-refresh-btn';
+  statusId=statusId||'master-refresh-status';
+  var btn=document.getElementById(btnId);
+  var status=document.getElementById(statusId);
   btn.disabled=true;
   status.textContent='갱신 중... (몇 분 걸릴 수 있습니다)';
   showLoadingToast_('Master 갱신 중... (최대 몇 분 소요될 수 있습니다)');
@@ -2414,6 +2433,60 @@ function uploadDailyFile(file){
   };
   reader.onerror=function(){
     btn.disabled=false;
+    el.textContent='파일 읽기 실패';
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadReworkFileStatus(){
+  var el=document.getElementById('rework-file-name');
+  fetch(WEBAPP_URL_SUMMARY+'?action=reworkstatus')
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(j.fileName){
+        var t=j.fileTime?new Date(j.fileTime).toLocaleString('ko-KR'):'';
+        el.textContent=j.fileName+' — 재검결과 '+(j.resultRows||0)+'행, 재검SN '+(j.snRows||0)+'행 ('+t+')';
+      } else {
+        el.textContent='아직 반영된 파일이 없습니다';
+      }
+    }).catch(function(){ el.textContent='확인 실패'; });
+}
+
+function uploadReworkFile(file){
+  if(!file) return;
+  var el=document.getElementById('rework-file-name');
+  var btn=document.getElementById('rework-upload-btn');
+  btn.disabled=true;
+  el.textContent='업로드 및 정리 중... ('+file.name+') — 몇 분 걸릴 수 있습니다';
+  showLoadingToast_('재검 파일 업로드 및 정리 중...');
+  var reader=new FileReader();
+  reader.onload=function(){
+    var base64Data=reader.result.split(',')[1];
+    fetch(WEBAPP_URL_SUMMARY, {
+      method:'POST',
+      body: JSON.stringify({uploadType:'rework', fileName:file.name, base64Data:base64Data})
+    }).then(function(r){return r.json();})
+      .then(function(j){
+        btn.disabled=false;
+        hideLoadingToast_();
+        if(j.success){
+          el.textContent=j.fileName+' — 재검결과 '+j.resultRows+'행, 재검SN '+j.snRows+'행 반영 완료';
+          _reworkData=null;
+          loadReworkTrend();
+        } else {
+          el.textContent='업로드 실패: '+j.error;
+          alert('⚠ 업로드 실패\n\n'+j.error);
+          document.getElementById('rework-file-input').value='';
+        }
+      }).catch(function(err){
+        btn.disabled=false;
+        hideLoadingToast_();
+        el.textContent='업로드 실패: '+err.message;
+      });
+  };
+  reader.onerror=function(){
+    btn.disabled=false;
+    hideLoadingToast_();
     el.textContent='파일 읽기 실패';
   };
   reader.readAsDataURL(file);
@@ -3008,10 +3081,9 @@ var _rwActiveTab='detail';
 
 function loadReworkTrend(){
   var pt=document.getElementById('rw-period-type').value;
-  var model=document.getElementById('rw-model-select').value;
   var status=document.getElementById('rw-status');
   showLoadingToast_('재검 Trend 데이터 불러오는 중...');
-  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt+(model?'&model='+encodeURIComponent(model):'');
+  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt; // 모델 필터는 서버에 안 보냄 — 항상 전체 모델을 받아서 화면에서만 골라봄 (드롭다운 목록 유지 위해)
   fetch(url).then(function(r){return r.json();}).then(function(json){
     if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';hideLoadingToast_();return;}
     _reworkData=json;
@@ -3049,6 +3121,71 @@ function renderAllReworkViews(){
   if(_rwActiveTab==='detail') renderReworkDetail();
   else if(_rwActiveTab==='bymodel') renderReworkByModel();
   else if(_rwActiveTab==='trend') renderReworkModelTrend();
+}
+
+// 재검 Trend 전용 누적 막대 차트 — 합착공정파손율/SET RTN+Aging파손율/재검파손율 3개를 쌓아서 표시
+// (참고: 재검파손율은 분모가 재검수라 앞 2개(분모=투입수)와 기준이 다릅니다 — 막대 합계 자체가 수학적 총합은 아니고, 3개 추이를 한 화면에서 비교하기 위한 용도입니다)
+function buildReworkCombo_(containerId, labels, rowsByPeriod){
+  var el=document.getElementById(containerId);
+  if(!el) return;
+  if(!labels.length){ el.innerHTML='<div class="empty">데이터가 없습니다</div>'; return; }
+  var cats=['합착 공정 파손율','SET RTN+Aging 파손율','재검파손율'];
+  var palette=['#00e676','#ff9800','#e91e63'];
+  var n=labels.length;
+  var W=Math.max(720, n*120), H=340;
+  var padL=52, padR=20, padT=30, padB=34;
+  var chartW=W-padL-padR, chartH=H-padT-padB;
+
+  var rates=rowsByPeriod.map(function(row){
+    if(!row) return [0,0,0];
+    return [ (row.processCrackRate||0)*100, (row.setRtnAgingRate||0)*100, (row.reworkCrackRate||0)*100 ];
+  });
+  var stackTotals=rates.map(function(r){return r[0]+r[1]+r[2];});
+  var maxVal=Math.max.apply(null, stackTotals.concat([1]));
+  var gridStep=0.5;
+  if(maxVal/gridStep>12) gridStep=1;
+  if(maxVal/gridStep>12) gridStep=2;
+  if(maxVal/gridStep>12) gridStep=5;
+  var gridSteps=Math.ceil(maxVal/gridStep)||1;
+  maxVal=gridSteps*gridStep;
+
+  var slot=chartW/n;
+  var barW=Math.min(52, slot*0.55);
+
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px">';
+  for(var g=0; g<=gridSteps; g++){
+    var gv=g*gridStep;
+    var yv=padT+chartH-(chartH*gv/maxVal);
+    svg+='<line x1="'+padL+'" y1="'+yv+'" x2="'+(W-padR)+'" y2="'+yv+'" stroke="rgba(255,255,255,.06)"/>';
+    svg+='<text x="'+(padL-6)+'" y="'+(yv+4)+'" font-size="10" fill="#9aa0aa" text-anchor="end">'+gv.toFixed(1)+'%</text>';
+  }
+
+  rates.forEach(function(r,i){
+    var x=padL+slot*i+slot/2;
+    var yBase=padT+chartH;
+    var acc=0;
+    r.forEach(function(rate,ci){
+      if(rate>0){
+        var h=chartH*(rate/maxVal);
+        var y=yBase-acc-h;
+        svg+='<rect x="'+(x-barW/2)+'" y="'+y+'" width="'+barW+'" height="'+h+'" fill="'+palette[ci]+'" rx="1"/>';
+        if(h>=12){
+          svg+='<text x="'+x+'" y="'+(y+h/2+3)+'" font-size="10" fill="#0d0f14" text-anchor="middle" font-weight="700">'+rate.toFixed(1)+'%</text>';
+        }
+        acc+=h;
+      }
+    });
+    svg+='<text x="'+x+'" y="'+(H-8)+'" font-size="10" fill="#9aa0aa" text-anchor="middle">'+labels[i]+'</text>';
+  });
+  svg+='</svg>';
+
+  var legend='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:6px;font-size:11px;color:#cfd3da">';
+  cats.forEach(function(c,i){
+    legend+='<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:'+palette[i]+';display:inline-block"></span>'+c+'</span>';
+  });
+  legend+='</div>';
+
+  el.innerHTML=legend+'<div style="overflow-x:auto">'+svg+'</div>';
 }
 
 function reworkHeaderRow_(firstColLabel){
@@ -3124,10 +3261,17 @@ function renderReworkModelTrend(){
   var model=document.getElementById('rw-model-select').value;
   if(!model){re.innerHTML='<div class="empty">모델을 선택해주세요</div>';return;}
   var periods=_reworkData.periods;
-  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('기간')+'</thead><tbody>';
-  periods.forEach(function(p){
+
+  var rowsByPeriod=periods.map(function(p){
     var row=null;
     _reworkData.data[p].rows.forEach(function(r){if(r.model===model) row=r;});
+    return row;
+  });
+  buildReworkCombo_('rw-chart-trend', periods.map(displayLabel_), rowsByPeriod);
+
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('기간')+'</thead><tbody>';
+  periods.forEach(function(p,i){
+    var row=rowsByPeriod[i];
     html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+displayLabel_(p)+'</td>';
     if(row){
       html+=reworkRowCells_(row);
