@@ -127,7 +127,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609100024)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609140001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -430,8 +430,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <select id="map-period-type" onchange="loadMapping()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
         <option value="month">월별</option>
-        <option value="week">주차별</option>
-        <option value="year">년도별</option>
+        <option value="year">년도별(CUM)</option>
       </select>
       <select id="map-period-value" onchange="renderMappingTable()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:120px"></select>
       <select id="map-model-select" onchange="loadMapping()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
@@ -2769,22 +2768,29 @@ function renderMappingTable(){
   if(!_mappingData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var p=document.getElementById('map-period-value').value;
   var pd=_mappingData.data[p];
-  if(!pd){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
+  if(!pd||!pd.rows.length){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
   var positions=_mappingData.positions;
-  var html='<div style="font-size:12px;color:var(--tx2);margin-bottom:8px">총 불량수 '+pd.totalDefect+'건 · 위치당 기대 불량수 '+pd.expected.toFixed(2)+'건 (23개 위치 균등분포 가정)</div>';
-  html+='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1400px"><thead><tr>';
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1600px"><thead><tr>'
+    +'<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">모델</th>'
+    +'<th style="white-space:nowrap">총불량수</th><th style="white-space:nowrap">위치당 기대값</th>';
   positions.forEach(function(pos){html+='<th style="white-space:nowrap">'+pos+'</th>';});
-  html+='</tr></thead><tbody><tr>';
-  positions.forEach(function(pos){
-    var cnt=pd.counts[pos]||0;
-    var pv=pd.pValues[pos];
-    var bg='transparent', fg='var(--tx)';
-    if(pv<0.01){ bg='rgba(244,67,54,.25)'; fg='#ff8a80'; }
-    else if(pv<0.05){ bg='rgba(255,193,7,.2)'; fg='#ffd54f'; }
-    html+='<td style="text-align:center;background:'+bg+';color:'+fg+';font-size:12px;font-weight:700">'+cnt
-      +'<div style="font-size:10px;font-weight:400">p='+pv.toFixed(3)+'</div></td>';
+  html+='</tr></thead><tbody>';
+  pd.rows.forEach(function(row){
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+row.model+'</td>';
+    html+='<td style="font-size:12px;text-align:center">'+row.totalDefect+'</td>';
+    html+='<td style="font-size:12px;text-align:center;color:var(--tx3)">'+row.expected.toFixed(2)+'</td>';
+    positions.forEach(function(pos){
+      var cnt=row.counts[pos]||0;
+      var pv=row.pValues[pos];
+      var bg='transparent', fg='var(--tx)';
+      if(pv<0.01){ bg='rgba(244,67,54,.25)'; fg='#ff8a80'; }
+      else if(pv<0.05){ bg='rgba(255,193,7,.2)'; fg='#ffd54f'; }
+      html+='<td style="text-align:center;background:'+bg+';color:'+fg+';font-size:12px;font-weight:700">'+cnt
+        +'<div style="font-size:10px;font-weight:400">p='+pv.toFixed(3)+'</div></td>';
+    });
+    html+='</tr>';
   });
-  html+='</tr></tbody></table></div>';
+  html+='</tbody></table></div>';
   html+='<div style="margin-top:8px;font-size:11px;color:var(--tx3)">🟨 p&lt;0.05 (주의, 경향성 의심) · 🟥 p&lt;0.01 (조사 대상, 강한 경향성)</div>';
   re.innerHTML=html;
 }
