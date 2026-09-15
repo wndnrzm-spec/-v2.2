@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150002)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150005)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -490,6 +490,13 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
     <div style="flex:1;font-size:12px;color:var(--tx2)">
+      업데이트된 부분만 있을 때는 구글시트에 직접 붙여넣어도 됩니다 (재검결과에 행 추가, 재검SN_정규화에 날짜별로 행 풀어서 추가).
+    </div>
+    <a href="https://docs.google.com/spreadsheets/d/1eKYDdzTM_D_Tv-eByCqsUQwuf-MWMXGtkgWIngR6hwQ/edit" target="_blank" rel="noopener" class="btn btn-gray" style="padding:7px 14px;font-size:12px;text-decoration:none;display:inline-block">수기 업로드</a>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
+    <div style="flex:1;font-size:12px;color:var(--tx2)">
       현재 반영된 재검 파일: <span id="rework-file-name" style="color:var(--tx);font-weight:600">확인 중...</span>
     </div>
     <input type="file" id="rework-file-input" accept=".xlsx" style="display:none" onchange="uploadReworkFile(this.files[0])">
@@ -500,9 +507,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <button class="tab active" onclick="rwTab('detail')">&#x2460; 전체 추이</button>
     <button class="tab" onclick="rwTab('bymodel')">&#x2461; 모델별 비교</button>
     <button class="tab" onclick="rwTab('trend')">&#x2462; 모델별 추이</button>
+    <button class="tab" onclick="rwTab('fourm')">&#x2463; 4M Trend</button>
   </div>
 
-  <div style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
+  <div id="rw-shared-controls" style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
     <select id="rw-period-type" onchange="loadReworkTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
       <option value="week">주차별</option>
       <option value="month">월별</option>
@@ -512,6 +520,9 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <select id="rw-model-select" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
       <option value="">전체 모델</option>
     </select>
+    <select id="rw-range-start" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:110px"></select>
+    <span id="rw-range-tilde" style="display:none;color:var(--tx3)">~</span>
+    <select id="rw-range-end" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:110px"></select>
     <button class="btn btn-g" onclick="loadReworkTrend()" style="padding:9px 18px">새로고침</button>
   </div>
   <div id="rw-status" style="margin-bottom:8px"></div>
@@ -528,6 +539,20 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <div class="info-box">모델을 하나 골라 그 모델의 기간별 파손/재검 추이를 봅니다.</div>
     <div style="position:relative;margin-bottom:12px"><button onclick="toggleFullscreen_(&#39;rw-chart-trend&#39;)" style="position:absolute;top:8px;right:8px;z-index:5;background:var(--sf);border:1px solid var(--bd2);border-radius:6px;color:var(--tx2);font-size:11px;padding:4px 8px;cursor:pointer">&#x26F6; 전체화면</button><div style="background:var(--sf2);border-radius:10px;padding:12px" id="rw-chart-trend"></div></div>
     <div id="rw-result-trend"><div class="empty">모델을 선택해주세요</div></div>
+  </div>
+
+  <div class="rw-panel" id="rw-panel-fourm" style="display:none">
+    <div class="info-box">모델 하나를 골라, 등록해둔 변경점(SN 구간)별 파손/재검 추이를 봅니다. 변경점은 Master_신규의 "변경점" 탭에서 관리합니다 (모델 / 변경명 / 시작SN / 종료SN — 종료SN 공란이면 그 뒤로 계속 누적).</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+      <select id="fourm-model-select" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
+        <option value="">모델 선택</option>
+      </select>
+      <button class="btn btn-g" onclick="loadFourMTrend()" style="padding:9px 18px">새로고침</button>
+      <a href="https://docs.google.com/spreadsheets/d/195V6X6boMyE8uR7dD1jgE2wSzTzzVmNY1agFnu86ta0/edit" target="_blank" rel="noopener" class="btn btn-gray" style="padding:9px 14px;font-size:12px;text-decoration:none">변경점 관리(시트 열기)</a>
+    </div>
+    <div id="fourm-status" style="margin-bottom:8px"></div>
+    <div style="position:relative;margin-bottom:12px"><button onclick="toggleFullscreen_(&#39;fourm-chart&#39;)" style="position:absolute;top:8px;right:8px;z-index:5;background:var(--sf);border:1px solid var(--bd2);border-radius:6px;color:var(--tx2);font-size:11px;padding:4px 8px;cursor:pointer">&#x26F6; 전체화면</button><div style="background:var(--sf2);border-radius:10px;padding:12px" id="fourm-chart"></div></div>
+    <div id="fourm-result"><div class="empty">모델을 선택해주세요</div></div>
   </div>
 </div>
 
@@ -3075,17 +3100,23 @@ function testRwConn(){
 
 function rwTab(name){
   _rwActiveTab=name;
-  ['detail','bymodel','trend'].forEach(function(n){
+  ['detail','bymodel','trend','fourm'].forEach(function(n){
     var panel=document.getElementById('rw-panel-'+n);
     if(panel) panel.style.display=(n===name?'block':'none');
   });
   document.querySelectorAll('#rw-tabs .tab').forEach(function(btn,i){
-    var names=['detail','bymodel','trend'];
+    var names=['detail','bymodel','trend','fourm'];
     btn.classList.toggle('active',names[i]===name);
   });
+  document.getElementById('rw-shared-controls').style.display=(name==='fourm'?'none':'flex');
   document.getElementById('rw-period-value').style.display=(name==='bymodel'?'':'none');
   document.getElementById('rw-model-select').style.display=(name==='trend'?'':'none');
-  renderAllReworkViews();
+  document.getElementById('rw-range-start').style.display=(name==='trend'?'':'none');
+  document.getElementById('rw-range-tilde').style.display=(name==='trend'?'':'none');
+  document.getElementById('rw-range-end').style.display=(name==='trend'?'':'none');
+  if(name!=='fourm'){
+    renderAllReworkViews();
+  }
 }
 
 var _reworkData=null;
@@ -3119,6 +3150,18 @@ function loadReworkTrend(){
       var opt=document.createElement('option');opt.value=m;opt.textContent=m;msel.appendChild(opt);
     });
     if(modelNames.indexOf(prevM)!==-1) msel.value=prevM;
+    populateFourMModelSelect_(modelNames);
+
+    var rsSel=document.getElementById('rw-range-start');
+    var reSel=document.getElementById('rw-range-end');
+    var prevRs=rsSel.value, prevRe=reSel.value;
+    rsSel.innerHTML=''; reSel.innerHTML='';
+    json.periods.forEach(function(p){
+      var o1=document.createElement('option');o1.value=p;o1.textContent=displayLabel_(p);rsSel.appendChild(o1);
+      var o2=document.createElement('option');o2.value=p;o2.textContent=displayLabel_(p);reSel.appendChild(o2);
+    });
+    if(json.periods.indexOf(prevRs)!==-1) rsSel.value=prevRs; else if(json.periods.length) rsSel.value=json.periods[0];
+    if(json.periods.indexOf(prevRe)!==-1) reSel.value=prevRe; else if(json.periods.length) reSel.value=json.periods[json.periods.length-1];
 
     status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개</div>';
     hideLoadingToast_();
@@ -3273,7 +3316,14 @@ function renderReworkModelTrend(){
   if(!_reworkData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var model=document.getElementById('rw-model-select').value;
   if(!model){re.innerHTML='<div class="empty">모델을 선택해주세요</div>';return;}
-  var periods=_reworkData.periods;
+  var allPeriods=_reworkData.periods;
+
+  var startVal=document.getElementById('rw-range-start').value;
+  var endVal=document.getElementById('rw-range-end').value;
+  var startIdx=allPeriods.indexOf(startVal); if(startIdx===-1) startIdx=0;
+  var endIdx=allPeriods.indexOf(endVal); if(endIdx===-1) endIdx=allPeriods.length-1;
+  if(startIdx>endIdx){ var tmp=startIdx; startIdx=endIdx; endIdx=tmp; }
+  var periods=allPeriods.slice(startIdx, endIdx+1);
 
   var rowsByPeriod=periods.map(function(p){
     var row=null;
@@ -3291,6 +3341,62 @@ function renderReworkModelTrend(){
     } else {
       html+='<td colspan="6" style="font-size:12px;color:var(--tx3);text-align:center">생산 없음</td>';
     }
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  re.innerHTML=html;
+}
+
+// ④ 4M Trend — 변경점(SN구간)별 파손/재검 추이
+function populateFourMModelSelect_(modelNames){
+  var sel=document.getElementById('fourm-model-select');
+  var prev=sel.value;
+  sel.innerHTML='<option value="">모델 선택</option>';
+  modelNames.forEach(function(m){
+    var opt=document.createElement('option');opt.value=m;opt.textContent=m;sel.appendChild(opt);
+  });
+  if(modelNames.indexOf(prev)!==-1) sel.value=prev;
+}
+
+var _fourMData=null;
+function loadFourMTrend(){
+  var model=document.getElementById('fourm-model-select').value;
+  var status=document.getElementById('fourm-status');
+  var re=document.getElementById('fourm-result');
+  if(!model){ re.innerHTML='<div class="empty">모델을 선택해주세요</div>'; return; }
+  showLoadingToast_('4M Trend 데이터 불러오는 중...');
+  status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
+  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model))
+    .then(function(r){return r.json();})
+    .then(function(json){
+      hideLoadingToast_();
+      if(json.error){ status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>'; return; }
+      if(!json.segments.length){
+        status.innerHTML='';
+        re.innerHTML='<div class="empty">이 모델에 등록된 변경점이 없습니다. "변경점 관리" 시트에서 모델/변경명/시작SN을 추가해주세요.</div>';
+        document.getElementById('fourm-chart').innerHTML='';
+        return;
+      }
+      _fourMData=json;
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 변경점 '+json.segments.length+'개</div>';
+      renderFourMTrend();
+    }).catch(function(err){
+      hideLoadingToast_();
+      status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 불러오기 실패: '+err.message+'</div>';
+    });
+}
+
+function renderFourMTrend(){
+  var re=document.getElementById('fourm-result');
+  if(!_fourMData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var segments=_fourMData.segments;
+  var rows=segments.map(function(s){ return _fourMData.data[s]; });
+  buildReworkCombo_('fourm-chart', segments, rows);
+
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('변경점')+'</thead><tbody>';
+  segments.forEach(function(s,i){
+    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+s+'</td>';
+    html+=reworkRowCells_(rows[i]);
     html+='</tr>';
   });
   html+='</tbody></table></div>';
