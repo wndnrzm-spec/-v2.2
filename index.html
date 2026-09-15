@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150007)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150008)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2655,8 +2655,8 @@ function buildCombo_(containerId, periods, cats, dataByPeriod){
   if(!el) return;
   if(!periods.length){ el.innerHTML='<div class="empty">데이터가 없습니다</div>'; return; }
   var TARGET_RATE=1.0; // Target(혁신목표) — 원본 고정값
-  var allCats=cats.concat(['RISK재고불량']);
-  var palette=['#00e676','#ff9800','#2196f3','#e91e63','#9c27b0','#795548','#8bc34a','#607d8b'];
+  var allCats=cats;
+  var palette=['#00e676','#ff9800','#2196f3','#e91e63','#9c27b0','#795548','#8bc34a'];
   var n=periods.length;
   var W=Math.max(720, n*120), H=380;
   var padL=52, padR=20, padT=30, padB=34;
@@ -2666,7 +2666,6 @@ function buildCombo_(containerId, periods, cats, dataByPeriod){
   var catRates=dataByPeriod.map(function(d){
     var r={};
     cats.forEach(function(c){ r[c]=d.input?(d.defects[c]||0)/d.input*100:0; });
-    r['RISK재고불량']=(d.riskRate||0)*100;
     return r;
   });
   var stackTotals=catRates.map(function(r){ var s=0; allCats.forEach(function(c){s+=r[c];}); return s; });
