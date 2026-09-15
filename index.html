@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150005)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150006)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -546,6 +546,11 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <select id="fourm-model-select" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
         <option value="">모델 선택</option>
+      </select>
+      <select id="fourm-period-type" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
+        <option value="month">월별</option>
+        <option value="week">주차별</option>
+        <option value="year">년도별</option>
       </select>
       <button class="btn btn-g" onclick="loadFourMTrend()" style="padding:9px 18px">새로고침</button>
       <a href="https://docs.google.com/spreadsheets/d/195V6X6boMyE8uR7dD1jgE2wSzTzzVmNY1agFnu86ta0/edit" target="_blank" rel="noopener" class="btn btn-gray" style="padding:9px 14px;font-size:12px;text-decoration:none">변경점 관리(시트 열기)</a>
@@ -3361,12 +3366,13 @@ function populateFourMModelSelect_(modelNames){
 var _fourMData=null;
 function loadFourMTrend(){
   var model=document.getElementById('fourm-model-select').value;
+  var pt=document.getElementById('fourm-period-type').value;
   var status=document.getElementById('fourm-status');
   var re=document.getElementById('fourm-result');
   if(!model){ re.innerHTML='<div class="empty">모델을 선택해주세요</div>'; return; }
   showLoadingToast_('4M Trend 데이터 불러오는 중...');
   status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
-  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model))
+  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt)
     .then(function(r){return r.json();})
     .then(function(json){
       hideLoadingToast_();
@@ -3378,7 +3384,7 @@ function loadFourMTrend(){
         return;
       }
       _fourMData=json;
-      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 변경점 '+json.segments.length+'개</div>';
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 변경점 '+json.segments.length+'개, 기간 '+json.periods.length+'개</div>';
       renderFourMTrend();
     }).catch(function(err){
       hideLoadingToast_();
@@ -3386,19 +3392,55 @@ function loadFourMTrend(){
     });
 }
 
+// 변경점(행 그룹) x 기간(열) 교차표 — 각 그룹당 3줄(투입수/Cracked/불량률)
 function renderFourMTrend(){
   var re=document.getElementById('fourm-result');
   if(!_fourMData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var segments=_fourMData.segments;
-  var rows=segments.map(function(s){ return _fourMData.data[s]; });
-  buildReworkCombo_('fourm-chart', segments, rows);
+  var periods=_fourMData.periods;
 
-  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('변경점')+'</thead><tbody>';
-  segments.forEach(function(s,i){
-    html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+s+'</td>';
-    html+=reworkRowCells_(rows[i]);
-    html+='</tr>';
+  // 차트: 세그먼트별 총합계 기준 (기존 누적막대 재사용)
+  var totalsBySeg=segments.map(function(s){ return _fourMData.data[s].total; });
+  buildReworkCombo_('fourm-chart', segments, totalsBySeg);
+
+  function pct(v){return (v*100).toFixed(2)+'%';}
+  var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:'+(160+ (periods.length+1)*90)+'px"><thead><tr>'
+    +'<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">변경점</th><th style="white-space:nowrap;position:sticky;left:130px;background:var(--sf2)"></th>';
+  periods.forEach(function(p){html+='<th style="white-space:nowrap">'+displayLabel_(p)+'</th>';});
+  html+='<th style="white-space:nowrap;background:var(--sf2)">총합계</th></tr></thead><tbody>';
+
+  function renderGroup_(label, perPeriodGetter, totalGetter, highlight){
+    var rowsMeta=[
+      {name:'투입수', get:function(m){return m.input;}, fmt:function(v){return v;}},
+      {name:'Cracked Panel', get:function(m){return m.crackCount;}, fmt:function(v){return v;}},
+      {name:'불량률', get:function(m){return m.crackRate;}, fmt:function(v){return (v*100).toFixed(2)+'%';}, isRate:true}
+    ];
+    rowsMeta.forEach(function(rm, ri){
+      html+='<tr'+(highlight?' style="background:rgba(255,193,7,.06)"':'')+'>';
+      if(ri===0){
+        html+='<td rowspan="3" style="font-size:12px;font-weight:700;white-space:nowrap;position:sticky;left:0;background:'+(highlight?'#2a2410':'var(--sf)')+'">'+label+'</td>';
+      }
+      html+='<td style="font-size:11px;color:var(--tx3);white-space:nowrap;position:sticky;left:130px;background:'+(highlight?'#2a2410':'var(--sf)')+'">'+rm.name+'</td>';
+      periods.forEach(function(p){
+        var m=perPeriodGetter(p);
+        var v=rm.get(m);
+        var color=rm.isRate ? (v>0?'var(--red)':'var(--tx2)') : 'var(--tx)';
+        html+='<td style="font-size:12px;text-align:center;color:'+color+(rm.isRate?';font-weight:700':'')+'">'+(m.input===0&&rm.name!=='투입수'?'-':rm.fmt(v))+'</td>';
+      });
+      var tm=totalGetter();
+      var tv=rm.get(tm);
+      html+='<td style="font-size:12px;text-align:center;font-weight:700;background:var(--sf2)">'+rm.fmt(tv)+'</td>';
+      html+='</tr>';
+    });
+  }
+
+  segments.forEach(function(s){
+    var segData=_fourMData.data[s];
+    renderGroup_(s, function(p){ return segData.periods[p]; }, function(){ return segData.total; }, false);
   });
+
+  renderGroup_('CUM (전체 누적)', function(p){ return _fourMData.cum.periods[p]; }, function(){ return _fourMData.cum.total; }, true);
+
   html+='</tbody></table></div>';
   re.innerHTML=html;
 }
