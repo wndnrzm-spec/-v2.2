@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150010)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150011)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2817,16 +2817,25 @@ function renderOverallTrend(){
 
     if(_selectedYear==='all'){
       // 원본 엑셀처럼 연도(고정)+CUM+월을 한 화면에 다 같이 표시 (막대가 %기준이라 스케일 문제 없음)
+      // 단, 월별로 펼치는 건 "가장 최신 연도" 하나만 — 나머지 연도는 한 줄(고정 또는 CUM)로만 요약
       fixedLabels.forEach(function(label){
         var h=history.filter(function(x){return x.year+'년'===label;})[0];
         periods.push(label); totalsMap[label]=h;
       });
-      grouped.years.forEach(function(y){
-        var cumKey=y+'년 CUM';
+      var sortedYears=grouped.years.slice().sort();
+      var latestYear=sortedYears.length?sortedYears[sortedYears.length-1]:null;
+      sortedYears.forEach(function(y){
         var yearPeriods=grouped.byYear[y];
+        var cumKey=y+'년 CUM';
         totalsMap[cumKey]=sumTotals_(yearPeriods.map(function(p){return _summaryData.data[p].total;}));
-        periods.push(cumKey);
-        yearPeriods.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
+        if(y===latestYear){
+          periods.push(cumKey);
+          yearPeriods.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
+        } else if(fixedLabels.indexOf(y+'년')===-1){
+          // 고정값이 따로 없는 과거 연도는 CUM 한 줄만 (월별로는 안 펼침)
+          periods.push(cumKey);
+        }
+        // 이미 fixedLabels에 있는 연도(예: 25년 고정값 존재)는 중복 표시 안 함
       });
     } else if(grouped.byYear[_selectedYear]){
       // 특정 연도만 골랐을 때 — RAW에 실제 데이터가 있으면 그 연도 CUM+월별로 (고정값보다 우선)
