@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150008)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150010)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2571,10 +2571,10 @@ function loadSummary(){
         var yearSel=document.getElementById('year-filter');
         var prevVal=yearSel.value||'all';
         yearSel.innerHTML='<option value="all">전체 연도</option>';
-        history.map(function(h){return h.year;}).forEach(function(y){
-          var opt=document.createElement('option');opt.value=y;opt.textContent=y+'년';yearSel.appendChild(opt);
-        });
-        grouped.years.forEach(function(y){
+        var yearSet={};
+        history.forEach(function(h){ yearSet[h.year]=true; });
+        grouped.years.forEach(function(y){ yearSet[y]=true; });
+        Object.keys(yearSet).sort().forEach(function(y){
           var opt=document.createElement('option');opt.value=y;opt.textContent=y+'년';yearSel.appendChild(opt);
         });
         if([].slice.call(yearSel.options).some(function(o){return o.value===prevVal;})) yearSel.value=prevVal;
@@ -2828,18 +2828,18 @@ function renderOverallTrend(){
         periods.push(cumKey);
         yearPeriods.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
       });
-    } else if(history.some(function(h){return h.year===_selectedYear;})){
-      // 레거시 연도 — 월별 세부 없이 연간 합계 한 줄만
-      var label=_selectedYear+'년';
-      var h=history.filter(function(x){return x.year===_selectedYear;})[0];
-      periods.push(label); totalsMap[label]=h;
     } else if(grouped.byYear[_selectedYear]){
-      // 특정 연도만 골랐을 때 — 그 연도 CUM+월만
+      // 특정 연도만 골랐을 때 — RAW에 실제 데이터가 있으면 그 연도 CUM+월별로 (고정값보다 우선)
       var cumKey2=_selectedYear+'년 CUM';
       var yearPeriods2=grouped.byYear[_selectedYear];
       totalsMap[cumKey2]=sumTotals_(yearPeriods2.map(function(p){return _summaryData.data[p].total;}));
       periods.push(cumKey2);
       yearPeriods2.forEach(function(p){ totalsMap[p]=_summaryData.data[p].total; periods.push(p); });
+    } else if(history.some(function(h){return h.year===_selectedYear;})){
+      // RAW에 상세 데이터가 없는 레거시 연도 — 월별 세부 없이 연간 합계 한 줄만
+      var label=_selectedYear+'년';
+      var h=history.filter(function(x){return x.year===_selectedYear;})[0];
+      periods.push(label); totalsMap[label]=h;
     }
 
     var chartLabels=periods.map(displayLabel_);
