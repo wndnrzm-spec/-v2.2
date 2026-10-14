@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2609150011)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610150001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -1959,11 +1959,130 @@ function driveImgUrl(url){
   if(m&&m[1])return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w1000';
   return url;
 }
+/* ── ISSUE 날짜 변환: gviz가 주는 "Date(2026,5,17)"(월은 0부터) → "2026-06-17" ── */
+function issueDateKey_(v){
+  if(v==null||v==='')return '';
+  var s=String(v).trim();
+  var m=s.match(/^Date\((\d{4}),\s*(\d{1,2}),\s*(\d{1,2})/);
+  if(m)return m[1]+'-'+('0'+(parseInt(m[2],10)+1)).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  m=s.match(/^(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})/);
+  if(m)return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  return '';
+}
+function fmtIssueDate_(v){var k=issueDateKey_(v);return k||(v==null?'':String(v));}
+/* ── IQC 조회 화면에서 바로 불량 사진 등록 (최신 ISSUE 기준) ── */
+function photoRegBtnHtml_(){
+  var L=window._iqcLatest;
+  if(!L||!L.pn||!L.date)return '';
+  return '<div id="iqc-photo-reg" style="margin-top:8px"><button class="btn btn-b" onclick="startPhotoRegister()" style="width:100%;padding:9px 12px;font-size:13px;font-weight:700">📷 사진 '+(L.hasPhoto?'교체':'등록')+' · '+L.date+' ISSUE</button></div>';
+}
+var _adminAuthed=false;
+var _pendingPhoto=null;
+function ensureAdminAuth_(){
+  if(_adminAuthed)return true;
+  var pw=prompt('관리자 비밀번호를 입력해 주세요');
+  if(pw===null)return false;
+  if(pw!==ADMIN_PASSWORD){alert('비밀번호가 올바르지 않습니다');return false;}
+  _adminAuthed=true;
+  return true;
+}
+function startPhotoRegister(){
+  var L=window._iqcLatest;
+  if(!L||!L.pn||!L.date){alert('먼저 품번을 조회해 주세요');return;}
+  if(!ensureAdminAuth_())return;
+  var inp=document.getElementById('iqc-photo-file-input');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='file';inp.accept='image/*';inp.id='iqc-photo-file-input';inp.style.display='none';
+    inp.onchange=function(){if(inp.files&&inp.files[0])showPhotoRegisterConfirm_(inp.files[0]);};
+    document.body.appendChild(inp);
+  }
+  inp.value='';
+  inp.click();
+}
+function showPhotoRegisterConfirm_(file){
+  var L=window._iqcLatest;
+  var box=document.getElementById('iqc-photo-reg');
+  if(!box||!L)return;
+  _pendingPhoto={file:file,pn:L.pn,date:L.date};
+  var url=URL.createObjectURL(file);
+  box.innerHTML='<div style="border:1.5px solid var(--green);border-radius:var(--r);padding:10px;background:var(--sf2)">'
+    +'<img src="'+url+'" alt="선택한 사진" style="width:100%;max-height:220px;object-fit:contain;background:#000;border-radius:6px;display:block">'
+    +'<div style="font-size:12px;color:var(--tx);margin-top:8px;line-height:1.5"><b style="font-family:Consolas,monospace">'+L.pn+'</b> · '+L.date+' ISSUE 에 '+(L.hasPhoto?'<span style="color:var(--amber)">기존 사진을 교체</span>':'등록')+'합니다</div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button class="btn btn-b" onclick="confirmPhotoRegister()" style="flex:1;padding:9px;font-size:13px;background:var(--green);border-color:var(--green);color:#04211a;font-weight:700">등록</button>'
+    +'<button class="btn btn-gray" onclick="cancelPhotoRegister()" style="padding:9px 14px;font-size:13px">취소</button></div>'
+    +'<div id="iqc-photo-reg-status" style="font-size:12px;color:var(--tx2);margin-top:8px;min-height:16px"></div></div>';
+}
+function cancelPhotoRegister(){
+  _pendingPhoto=null;
+  var box=document.getElementById('iqc-photo-reg');
+  if(box){var tmp=document.createElement('div');tmp.innerHTML=photoRegBtnHtml_();box.innerHTML=tmp.firstChild?tmp.firstChild.innerHTML:'';}
+}
+/* 휴대폰 원본(수 MB)을 그대로 올리면 느리므로 긴 변 1600px JPEG로 줄여서 전송. 실패 시 원본 그대로 */
+function shrinkImage_(file,maxDim,quality){
+  return new Promise(function(resolve){
+    function fallback(){
+      var fr=new FileReader();
+      fr.onload=function(){resolve({base64:String(fr.result).split(',')[1],mimeType:file.type||'image/jpeg'});};
+      fr.onerror=function(){resolve(null);};
+      fr.readAsDataURL(file);
+    }
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var w=img.naturalWidth,h=img.naturalHeight,s=Math.min(1,maxDim/Math.max(w,h));
+        var c=document.createElement('canvas');
+        c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        var data=c.toDataURL('image/jpeg',quality);
+        URL.revokeObjectURL(url);
+        resolve({base64:data.split(',')[1],mimeType:'image/jpeg'});
+      }catch(e){URL.revokeObjectURL(url);fallback();}
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);fallback();};
+    img.src=url;
+  });
+}
+function confirmPhotoRegister(){
+  var P=_pendingPhoto;
+  if(!P)return;
+  var st=document.getElementById('iqc-photo-reg-status');
+  function fail(msg){if(st){st.style.color='var(--red)';st.textContent='등록 실패: '+msg;}}
+  if(!ADMIN_WEBAPP_URL||ADMIN_WEBAPP_URL.indexOf('PASTE_')===0){fail('관리자 등록 서버 URL이 설정되지 않았습니다');return;}
+  st.style.color='var(--tx2)';st.textContent='사진 최적화 중...';
+  shrinkImage_(P.file,1600,0.85).then(function(res){
+    if(!res){fail('사진을 읽을 수 없습니다');return;}
+    st.textContent='업로드 중...';
+    var ext=(res.mimeType.indexOf('png')!==-1)?'png':'jpg';
+    return fetch(ADMIN_WEBAPP_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({pn:P.pn,issueDate:P.date,filename:P.pn+'_'+P.date+'.'+ext,mimeType:res.mimeType,data:res.base64})
+    }).then(function(r){return r.json();}).then(function(json){
+      if(json&&json.ok){
+        _pendingPhoto=null;
+        var L=window._iqcLatest;
+        if(L&&L.pn===P.pn&&L.date===P.date)L.hasPhoto=true;
+        var pa=document.getElementById('iqc-photo-area');
+        if(pa&&L&&L.pn===P.pn){
+          pa.innerHTML='<div style="border:1.5px solid var(--green);border-radius:var(--r);overflow:hidden;background:var(--sf2)">'
+            +'<img src="data:'+res.mimeType+';base64,'+res.base64+'" alt="등록한 사진" style="width:100%;display:block;max-height:280px;object-fit:contain;background:#000"></div>'
+            +'<div style="font-size:11px;color:var(--green);margin-top:6px">✓ '+P.date+' ISSUE 사진 등록 완료</div>'
+            +photoRegBtnHtml_();
+        }
+      }else{
+        fail(json&&json.error?json.error:'일치하는 이력을 찾지 못했습니다');
+      }
+    });
+  }).catch(function(err){fail(err.message);});
+}
 function renderPhotoArea(url,dateLabel){
   var pa=document.getElementById('iqc-photo-area');
   if(!pa)return;
   if(!url){
-    pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:24px 12px;text-align:center;color:var(--tx3);font-size:12px">등록된 불량 사진 없음</div>';
+    pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:24px 12px;text-align:center;color:var(--tx3);font-size:12px">등록된 불량 사진 없음</div>'+photoRegBtnHtml_();
     return;
   }
   var img=driveImgUrl(url);
@@ -1974,10 +2093,11 @@ function renderPhotoArea(url,dateLabel){
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">'
     +(dateLabel?'<span style="font-size:11px;color:var(--tx3)">'+dateLabel+' 이력 사진</span>':'<span></span>')
     +'<a href="'+url+'" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue);text-decoration:underline">원본 링크 열기</a>'
-    +'</div>';
+    +'</div>'
+    +photoRegBtnHtml_();
   var imgEl=document.getElementById('iqc-photo-img');
   if(imgEl)imgEl.onerror=function(){
-    pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:20px 12px;text-align:center;font-size:12px;color:var(--tx2)">사진을 불러올 수 없습니다 — <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">원본 링크 열기</a></div>';
+    pa.innerHTML='<div style="background:var(--sf2);border:1px dashed var(--bd);border-radius:var(--r);padding:20px 12px;text-align:center;font-size:12px;color:var(--tx2)">사진을 불러올 수 없습니다 — <a href="'+url+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">원본 링크 열기</a></div>'+photoRegBtnHtml_();
   };
 }
 var ADMIN_WEBAPP_URL='https://script.google.com/macros/s/AKfycbxFJazwNBpQutK6X1vTwhaGnG3XxfOq1cyVuM6J9_QlEOt7WyZhKbhn7fOE61nG2s2z5A/exec';
@@ -2171,6 +2291,7 @@ function searchIQC(){
   var qtyRaw=document.getElementById('iqc-qty-input')?document.getElementById('iqc-qty-input').value:'';
   var qty=parseInt(qtyRaw,10);if(isNaN(qty)||qty<0)qty=0;
   startST(pn,qty);
+  window._iqcLatest=null;_pendingPhoto=null;
   var re=document.getElementById('iqc-result');
   var ca=document.getElementById('iqc-category-area');
   var pa=document.getElementById('iqc-photo-area');
@@ -2198,15 +2319,17 @@ function searchIQC(){
         searchChecklist(pn);
         return;
       }
-      var sorted=matched.slice().sort(function(a,b){
-        var da=a.c[1]&&a.c[1].v?String(a.c[1].v):'';
-        var db=b.c[1]&&b.c[1].v?String(b.c[1].v):'';
-        return da>db?-1:1;
-      });
       function gv(row,idx){if(!row.c||!row.c[idx])return '';var c=row.c[idx];return c.v!=null?String(c.v).trim():c.f||'';}
+      // 날짜를 "Date(2026,10,1)" 문자열 그대로 비교하면 11월·12월·한 자리 일자가 잘못 정렬되므로 yyyy-mm-dd로 변환해서 비교
+      var sorted=matched.slice().sort(function(a,b){
+        var ka=issueDateKey_(gv(a,1));
+        var kb=issueDateKey_(gv(b,1));
+        return ka>kb?-1:(ka<kb?1:0);
+      });
       var latest=sorted[0];
-      var g=gv(latest,6)||'-';var d=gv(latest,1);var item=gv(latest,4);
+      var g=gv(latest,6)||'-';var d=fmtIssueDate_(gv(latest,1));var item=gv(latest,4);
       var photoUrl=gv(latest,10);
+      window._iqcLatest={pn:pn,date:issueDateKey_(gv(latest,1)),hasPhoto:!!photoUrl};
       renderPhotoArea(photoUrl,d);
       loadAQLGrid().then(function(){
       re.innerHTML='<div style="background:var(--gd);border:1.5px solid var(--green);border-radius:var(--r);padding:16px;margin-bottom:12px">'
@@ -2221,7 +2344,7 @@ function searchIQC(){
       if(sorted.length>1){
         var hist='<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">전체 이력 '+sorted.length+'건 — 최신순</div>';
         sorted.forEach(function(row){
-          var rg=gv(row,6);var rd=gv(row,1)||'-';var ri=gv(row,4);
+          var rg=gv(row,6);var rd=fmtIssueDate_(gv(row,1))||'-';var ri=gv(row,4);
           hist+='<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;margin-bottom:6px">'
             +'<div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:var(--tx2)">'+rd+'</span>'
             +'<span style="font-size:13px;font-weight:700;color:'+(rg?'var(--red)':'var(--blue)')+'">'+( rg||'AQL 등급')+'</span></div>'
