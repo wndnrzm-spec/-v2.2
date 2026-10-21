@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610150002)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610210001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -437,7 +437,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
 
   <div class="flcd-panel" id="flcd-panel-mapping" style="display:none">
-    <div class="info-box">패널 위치(1~12번)별 불량이 우연히 분포한 건지, 특정 위치에 쏠려있는 건지 포아송 분포로 검정합니다. p&lt;0.05(주의), p&lt;0.01(강한 경향성)일 때 표시됩니다.</div>
+    <div class="info-box">패널 위치(1~12번)별 불량(선택한 유형: 파손 또는 L/D)이 우연히 분포한 건지, 특정 위치에 쏠려있는 건지 포아송 분포로 검정합니다. p&lt;0.05(주의), p&lt;0.01(강한 경향성)일 때 표시됩니다.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <select id="map-period-type" onchange="loadMapping()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
         <option value="month">월별</option>
@@ -446,6 +446,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
       <select id="map-period-value" onchange="renderMappingTable()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:120px"></select>
       <select id="map-model-select" onchange="loadMapping()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
         <option value="">전체 모델</option>
+      </select>
+      <select id="map-cat-select" onchange="loadMapping()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:110px">
+        <option value="Crack">파손 (Crack)</option>
+        <option value="L/D">L/D</option>
       </select>
       <button class="btn btn-g" onclick="loadMapping()" style="padding:9px 18px">새로고침</button>
     </div>
@@ -529,6 +533,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
 
   <div class="rw-panel active" id="rw-panel-detail">
     <div class="info-box">전체 모델 합산 기준, 선택한 기간 단위별 공정 파손 / 재검 파손 추이입니다.</div>
+    <div style="position:relative;margin-bottom:12px"><button onclick="toggleFullscreen_(&#39;rw-chart-detail&#39;)" style="position:absolute;top:8px;right:8px;z-index:5;background:var(--sf);border:1px solid var(--bd2);border-radius:6px;color:var(--tx2);font-size:11px;padding:4px 8px;cursor:pointer">&#x26F6; 전체화면</button><div style="background:var(--sf2);border-radius:10px;padding:12px" id="rw-chart-detail"></div></div>
     <div id="rw-result-detail"><div class="empty">새로고침을 눌러주세요</div></div>
   </div>
   <div class="rw-panel" id="rw-panel-bymodel" style="display:none">
@@ -3090,9 +3095,10 @@ var _mappingData=null;
 function loadMapping(){
   var pt=document.getElementById('map-period-type').value;
   var model=document.getElementById('map-model-select').value;
+  var cat=document.getElementById('map-cat-select').value||'Crack';
   var status=document.getElementById('map-status');
   showLoadingToast_('Mapping 데이터 불러오는 중...');
-  var url=WEBAPP_URL_SUMMARY+'?action=mapping&periodType='+pt+(model?'&model='+encodeURIComponent(model):'');
+  var url=WEBAPP_URL_SUMMARY+'?action=mapping&periodType='+pt+'&cat='+encodeURIComponent(cat)+(model?'&model='+encodeURIComponent(model):'');
   fetch(url).then(function(r){return r.json();}).then(function(json){
     _mappingData=json;
     var sel=document.getElementById('map-period-value');
@@ -3103,7 +3109,7 @@ function loadMapping(){
     });
     if(json.periods.indexOf(prevVal)!==-1) sel.value=prevVal;
     else if(json.periods.length) sel.value=json.periods[json.periods.length-1];
-    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개</div>';
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(cat==='L/D'?'L/D':'파손(Crack)')+' · 기간 '+json.periods.length+'개</div>';
     hideLoadingToast_();
     renderMappingTable();
   }).catch(function(err){
@@ -3126,7 +3132,7 @@ function renderMappingTable(){
     +'<th style="white-space:nowrap;position:sticky;left:0;background:var(--sf2)">위치</th>';
   models.forEach(function(m){html+='<th style="white-space:nowrap">'+m.model+'</th>';});
   html+='</tr><tr>'
-    +'<td style="font-size:11px;color:var(--tx3);position:sticky;left:0;background:var(--sf2)">총불량수 / 위치당기대값</td>';
+    +'<td style="font-size:11px;color:var(--tx3);position:sticky;left:0;background:var(--sf2)">'+(_mappingData.cat==='L/D'?'L/D':'파손')+' 수 / 위치당기대값</td>';
   models.forEach(function(m){html+='<td style="font-size:11px;text-align:center;color:var(--tx3);white-space:nowrap">'+m.totalDefect+' / '+m.expected.toFixed(2)+'</td>';});
   html+='</tr></thead><tbody>';
 
@@ -3407,9 +3413,12 @@ function reworkRowCells_(met){
 // ① 전체 추이 — 기간별(주차/월/년) 전체 합산
 function renderReworkDetail(){
   var re=document.getElementById('rw-result-detail');
-  if(!_reworkData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
+  var chartEl=document.getElementById('rw-chart-detail');
+  if(!_reworkData){if(chartEl)chartEl.innerHTML='';re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var periods=_reworkData.periods;
-  if(!periods.length){re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
+  if(!periods.length){if(chartEl)chartEl.innerHTML='';re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
+  // 차트: ③ 모델별 추이와 같은 쌓은 막대 (전체 합산 값 사용)
+  buildReworkCombo_('rw-chart-detail', periods.map(displayLabel_), periods.map(function(p){return _reworkData.data[p].total;}));
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('기간')+'</thead><tbody>';
   periods.forEach(function(p){
     html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+displayLabel_(p)+'</td>';
