@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610210003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610210004)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -417,7 +417,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <select id="year-filter" onchange="onYearFilterChange_()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:100px">
       <option value="all">전체 연도</option>
     </select>
-    <button class="btn btn-g" onclick="loadSummary()" style="padding:9px 18px">새로고침</button>
+    <button class="btn btn-g" onclick="loadSummary(true)" style="padding:9px 18px">새로고침</button>
   </div>
   <div id="sum-status" style="margin-bottom:8px"></div>
 
@@ -451,7 +451,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
         <option value="Crack">파손 (Crack)</option>
         <option value="L/D">L/D</option>
       </select>
-      <button class="btn btn-g" onclick="loadMapping()" style="padding:9px 18px">새로고침</button>
+      <button class="btn btn-g" onclick="loadMapping(true)" style="padding:9px 18px">새로고침</button>
     </div>
     <div id="map-status" style="margin-bottom:8px"></div>
     <div id="map-result"><div class="empty">새로고침을 눌러주세요</div></div>
@@ -460,7 +460,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div class="flcd-panel" id="flcd-panel-storage" style="display:none">
     <div class="info-box">3개월을 넘겨 창고에 있었던 투입건이 얼마나 되는지 봅니다 (1~2개월은 정상 범위라 중요하지 않음).</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
-      <button class="btn btn-g" onclick="loadStorage()" style="padding:9px 18px">새로고침</button>
+      <button class="btn btn-g" onclick="loadStorage(true)" style="padding:9px 18px">새로고침</button>
     </div>
     <div id="stor-status" style="margin-bottom:8px"></div>
 
@@ -527,7 +527,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <select id="rw-range-start" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:110px"></select>
     <span id="rw-range-tilde" style="display:none;color:var(--tx3)">~</span>
     <select id="rw-range-end" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:110px"></select>
-    <button class="btn btn-g" onclick="loadReworkTrend()" style="padding:9px 18px">새로고침</button>
+    <button class="btn btn-g" onclick="loadReworkTrend(true)" style="padding:9px 18px">새로고침</button>
   </div>
   <div id="rw-status" style="margin-bottom:8px"></div>
 
@@ -567,7 +567,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
         <input type="date" id="fourm-to" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:8px 10px;outline:none;color-scheme:dark">
         <button class="btn btn-gray" onclick="clearFourMRange()" style="padding:8px 10px;font-size:12px" title="날짜 범위 지우기(전체 기간)">초기화</button>
       </span>
-      <button class="btn btn-g" onclick="loadFourMTrend()" style="padding:9px 18px">새로고침</button>
+      <button class="btn btn-g" onclick="loadFourMTrend(true)" style="padding:9px 18px">새로고침</button>
       <a href="https://docs.google.com/spreadsheets/d/195V6X6boMyE8uR7dD1jgE2wSzTzzVmNY1agFnu86ta0/edit" target="_blank" rel="noopener" class="btn btn-gray" style="padding:9px 14px;font-size:12px;text-decoration:none">변경점 관리(시트 열기)</a>
     </div>
     <div id="fourm-status" style="margin-bottom:8px"></div>
@@ -2667,11 +2667,22 @@ function uploadReworkFile(file){
   reader.readAsDataURL(file);
 }
 
-function loadSummary(){
+// 서버가 저장해 둔 결과를 줬으면 상태줄에 표시 (데이터가 바뀌면 서버가 알아서 새로 계산함. 새로고침 버튼은 항상 새로 계산)
+function cacheNote_(json){
+  try{
+    if(json&&json._cache&&json._cache.hit){
+      var d=new Date(json._cache.at);
+      return ' · <span style="color:var(--tx3)">⚡ 저장된 결과 ('+(d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+' 계산)</span>';
+    }
+  }catch(e){}
+  return '';
+}
+
+function loadSummary(force){
   // ①③은 항상 월별 데이터를 써야 하므로, "새로고침"은 항상 periodType=month로 고정 조회
   var status=document.getElementById('sum-status');
   showLoadingToast_('데이터 불러오는 중...');
-  fetch(WEBAPP_URL_SUMMARY+'?action=summary&periodType=month')
+  fetch(WEBAPP_URL_SUMMARY+'?action=summary&periodType=month'+(force?'&nocache=1':''))
     .then(function(r){return r.json();})
     .then(function(json){
       if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';hideLoadingToast_();return;}
@@ -2697,7 +2708,7 @@ function loadSummary(){
         if(modelNames.indexOf(cur)!==-1) sel.value=cur;
       });
 
-      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개</div>';
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개'+cacheNote_(json)+'</div>';
 
       loadHistory_(function(history){
         var grouped=groupPeriodsByYear_(json.periods);
@@ -3102,13 +3113,13 @@ function renderModelTrend(){
 
 // ④ Mapping — 위치별 불량 포아송 검정
 var _mappingData=null;
-function loadMapping(){
+function loadMapping(force){
   var pt=document.getElementById('map-period-type').value;
   var model=document.getElementById('map-model-select').value;
   var cat=document.getElementById('map-cat-select').value||'Crack';
   var status=document.getElementById('map-status');
   showLoadingToast_('Mapping 데이터 불러오는 중...');
-  var url=WEBAPP_URL_SUMMARY+'?action=mapping&periodType='+pt+'&cat='+encodeURIComponent(cat)+(model?'&model='+encodeURIComponent(model):'');
+  var url=WEBAPP_URL_SUMMARY+'?action=mapping&periodType='+pt+'&cat='+encodeURIComponent(cat)+(model?'&model='+encodeURIComponent(model):'')+(force?'&nocache=1':'');
   fetch(url).then(function(r){return r.json();}).then(function(json){
     _mappingData=json;
     var sel=document.getElementById('map-period-value');
@@ -3119,7 +3130,7 @@ function loadMapping(){
     });
     if(json.periods.indexOf(prevVal)!==-1) sel.value=prevVal;
     else if(json.periods.length) sel.value=json.periods[json.periods.length-1];
-    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(cat==='L/D'?'L/D':'파손(Crack)')+' · 기간 '+json.periods.length+'개</div>';
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(cat==='L/D'?'L/D':'파손(Crack)')+' · 기간 '+json.periods.length+'개'+cacheNote_(json)+'</div>';
     hideLoadingToast_();
     renderMappingTable();
   }).catch(function(err){
@@ -3165,10 +3176,10 @@ function renderMappingTable(){
 
 // ⑤ 보관기간 분포 — 3개월 초과 여부만 본다 (항상 월별)
 var _storageData=null;
-function loadStorage(){
+function loadStorage(force){
   var status=document.getElementById('stor-status');
   showLoadingToast_('보관기간 데이터 불러오는 중...');
-  fetch(WEBAPP_URL_SUMMARY+'?action=storage').then(function(r){return r.json();}).then(function(json){
+  fetch(WEBAPP_URL_SUMMARY+'?action=storage'+(force?'&nocache=1':'')).then(function(r){return r.json();}).then(function(json){
     _storageData=json;
     var sel=document.getElementById('stor-month-select');
     var prevVal=sel.value;
@@ -3178,7 +3189,7 @@ function loadStorage(){
     });
     if(json.periods.indexOf(prevVal)!==-1) sel.value=prevVal;
     else if(json.periods.length) sel.value=json.periods[json.periods.length-1];
-    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개</div>';
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개'+cacheNote_(json)+'</div>';
     hideLoadingToast_();
     renderStorageMonthly();
     renderStorageByModel();
@@ -3269,11 +3280,11 @@ function rwTab(name){
 var _reworkData=null;
 var _rwActiveTab='detail';
 
-function loadReworkTrend(){
+function loadReworkTrend(force){
   var pt=document.getElementById('rw-period-type').value;
   var status=document.getElementById('rw-status');
   showLoadingToast_('재검 Trend 데이터 불러오는 중...');
-  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt; // 모델 필터는 서버에 안 보냄 — 항상 전체 모델을 받아서 화면에서만 골라봄 (드롭다운 목록 유지 위해)
+  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt+(force?'&nocache=1':''); // 모델 필터는 서버에 안 보냄 — 항상 전체 모델을 받아서 화면에서만 골라봄 (드롭다운 목록 유지 위해)
   fetch(url).then(function(r){return r.json();}).then(function(json){
     if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';hideLoadingToast_();return;}
     _reworkData=json;
@@ -3310,7 +3321,7 @@ function loadReworkTrend(){
     if(json.periods.indexOf(prevRs)!==-1) rsSel.value=prevRs; else if(json.periods.length) rsSel.value=json.periods[0];
     if(json.periods.indexOf(prevRe)!==-1) reSel.value=prevRe; else if(json.periods.length) reSel.value=json.periods[json.periods.length-1];
 
-    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개</div>';
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개'+cacheNote_(json)+'</div>';
     hideLoadingToast_();
     renderAllReworkViews();
   }).catch(function(err){
@@ -3515,7 +3526,7 @@ function clearFourMRange(){
   loadFourMTrend();
 }
 
-function loadFourMTrend(){
+function loadFourMTrend(force){
   var model=document.getElementById('fourm-model-select').value;
   var pt=document.getElementById('fourm-period-type').value;
   var mode=document.getElementById('fourm-mode-select').value||'single';
@@ -3526,7 +3537,7 @@ function loadFourMTrend(){
   if(!model){ re.innerHTML='<div class="empty">모델을 선택해주세요</div>'; return; }
   showLoadingToast_('4M Trend 데이터 불러오는 중...');
   status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
-  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt+'&mode='+mode+(dFrom?'&from='+dFrom:'')+(dTo?'&to='+dTo:''))
+  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt+'&mode='+mode+(dFrom?'&from='+dFrom:'')+(dTo?'&to='+dTo:'')+(force?'&nocache=1':''))
     .then(function(r){return r.json();})
     .then(function(json){
       hideLoadingToast_();
@@ -3544,7 +3555,7 @@ function loadFourMTrend(){
         return;
       }
       _fourMData=json;
-      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(mode==='combo'?'중복 변경점(조합) ':'개별 변경점 ')+json.segments.length+'개, 기간 '+json.periods.length+'개'+((dFrom||dTo)?' · 합착일 '+(dFrom||'처음')+' ~ '+(dTo||'끝'):'')+'</div>';
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(mode==='combo'?'중복 변경점(조합) ':'개별 변경점 ')+json.segments.length+'개, 기간 '+json.periods.length+'개'+((dFrom||dTo)?' · 합착일 '+(dFrom||'처음')+' ~ '+(dTo||'끝'):'')+cacheNote_(json)+'</div>';
       renderFourMTrend();
     }).catch(function(err){
       hideLoadingToast_();
