@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610210001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2610210002)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -547,7 +547,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   </div>
 
   <div class="rw-panel" id="rw-panel-fourm" style="display:none">
-    <div class="info-box">모델 하나를 골라, 등록해둔 변경점(SN 구간)별 파손/재검 추이를 봅니다. 변경점은 Master_신규의 "변경점" 탭에서 관리합니다 (모델 / 변경명 / 시작SN / 종료SN — 종료SN 공란이면 그 뒤로 계속 누적).</div>
+    <div class="info-box">모델 하나를 골라, 등록해둔 변경점(SN 구간)별 파손/재검 추이를 봅니다. 변경점은 Master_신규의 "변경점" 탭에서 관리합니다 (모델 / 변경명 / 시작SN / 종료SN — 종료SN 공란이면 그 뒤로 계속 누적). <b>개별 변경점</b>: 변경점이 겹치면 가장 늦게 시작한 변경점 한 행에만 집계 · <b>중복 변경점(조합)</b>: 겹치는 패널은 "A + B" 같은 조합 행에 한 번만 집계 (행 합계 = CUM).</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <select id="fourm-model-select" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:160px">
         <option value="">모델 선택</option>
@@ -556,6 +556,10 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
         <option value="month">월별</option>
         <option value="week">주차별</option>
         <option value="year">년도별</option>
+      </select>
+      <select id="fourm-mode-select" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
+        <option value="single">개별 변경점</option>
+        <option value="combo">중복 변경점(조합)</option>
       </select>
       <button class="btn btn-g" onclick="loadFourMTrend()" style="padding:9px 18px">새로고침</button>
       <a href="https://docs.google.com/spreadsheets/d/195V6X6boMyE8uR7dD1jgE2wSzTzzVmNY1agFnu86ta0/edit" target="_blank" rel="noopener" class="btn btn-gray" style="padding:9px 14px;font-size:12px;text-decoration:none">변경점 관리(시트 열기)</a>
@@ -3502,12 +3506,13 @@ var _fourMData=null;
 function loadFourMTrend(){
   var model=document.getElementById('fourm-model-select').value;
   var pt=document.getElementById('fourm-period-type').value;
+  var mode=document.getElementById('fourm-mode-select').value||'single';
   var status=document.getElementById('fourm-status');
   var re=document.getElementById('fourm-result');
   if(!model){ re.innerHTML='<div class="empty">모델을 선택해주세요</div>'; return; }
   showLoadingToast_('4M Trend 데이터 불러오는 중...');
   status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
-  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt)
+  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt+'&mode='+mode)
     .then(function(r){return r.json();})
     .then(function(json){
       hideLoadingToast_();
@@ -3519,7 +3524,7 @@ function loadFourMTrend(){
         return;
       }
       _fourMData=json;
-      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 변경점 '+json.segments.length+'개, 기간 '+json.periods.length+'개</div>';
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(mode==='combo'?'중복 변경점(조합) ':'개별 변경점 ')+json.segments.length+'개, 기간 '+json.periods.length+'개</div>';
       renderFourMTrend();
     }).catch(function(err){
       hideLoadingToast_();
@@ -3557,7 +3562,8 @@ function renderFourMTrend(){
     var bg=highlight?'#2a2410':'var(--sf)';
     // 행1: 투입수 (공정=생산투입수, 재검=재검수량)
     html+='<tr'+(highlight?' style="background:rgba(255,193,7,.06)"':'')+'>';
-    html+='<td rowspan="2" style="font-size:12px;font-weight:700;white-space:nowrap;position:sticky;left:0;background:'+bg+'">'+label+'</td>';
+    var labelHtml=(_fourMData&&_fourMData.mode==='combo')?String(label).split(' + ').join('<br>+ '):label; // 조합 이름은 변경점마다 줄바꿈
+    html+='<td rowspan="2" style="font-size:12px;font-weight:700;white-space:nowrap;position:sticky;left:0;background:'+bg+'">'+labelHtml+'</td>';
     html+='<td style="font-size:11px;color:var(--tx3);white-space:nowrap;position:sticky;left:130px;background:'+bg+'">투입수</td>';
     periods.forEach(function(p){
       var m=perPeriodGetter(p);
