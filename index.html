@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611050001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611050002)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -3340,7 +3340,8 @@ function renderAllReworkViews(){
 // (참고: 재검파손율은 분모가 재검수라 앞 2개(분모=투입수)와 기준이 다릅니다 — 막대 합계 자체가 수학적 총합은 아니고, 3개 추이를 한 화면에서 비교하기 위한 용도입니다)
 // markers(선택): [{idx, text, sub}] — 그 기간(idx) 시작 위치에 변경점 점선+라벨+구간 음영을 그림 (모델별 추이에서만 사용)
 // noteHtml(선택): 차트 위에 붙일 안내 문구
-function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml){
+// fixedMax(선택): Y축 최대값(%) 고정. 넘는 막대는 위에서 잘라 그리고 "▲ 실제값"을 표시 (모델별 추이: 10)
+function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml, fixedMax){
   var el=document.getElementById(containerId);
   if(!el) return;
   if(!labels.length){ el.innerHTML='<div class="empty">데이터가 없습니다</div>'; return; }
@@ -3352,20 +3353,26 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml)
   // 변경점 라벨 배치 — 가로로 겹치면 다음 줄로 내림
   var MK_COLORS=['#4fc3f7','#ba68c8','#fff176','#90a4ae','#a1887f','#80cbc4'];
   var mk=(markers||[]).slice().sort(function(a,b){return a.idx-b.idx;});
-  var LV_H=32, mkLevels=0;
-  function txtW_(s,fs){ var w=0; for(var k=0;k<s.length;k++){ w+= s.charCodeAt(k)>255 ? fs : fs*0.58; } return w; }
+  function txtW_(s,fs){ var w=0; for(var k=0;k<s.length;k++){ w+= s.charCodeAt(k)>255 ? fs*1.05 : fs*0.6; } return w; }
   function esc_(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   if(mk.length){
-    var slot0=(W-padL-padR)/n, lastEnd=[];
+    // 라벨은 자르지 않고 변경점 이름을 한 줄씩 전부 표시 (같은 시점에 여러 개면 줄이 늘어남)
+    var slot0=(W-padL-padR)/n, lastEnd=[], levelH=[];
     mk.forEach(function(m){
-      m.full='▶ '+m.text;
-      m.shown=m.full.length>26 ? m.full.substring(0,25)+'…' : m.full;
+      var names=(m.names&&m.names.length)?m.names:[m.text];
+      m.lines=names.map(function(s,k){ return (k===0?'▶ ':'+ ')+s; });
+      m.bh=4+12*m.lines.length+(m.sub?11:0)+3;
       m.x=padL+slot0*Math.max(0,Math.min(n-1,m.idx));
-      m.w=Math.max(txtW_(m.shown,10), txtW_(m.sub||'',9))+14;
+      var mw=0; m.lines.forEach(function(l){ mw=Math.max(mw,txtW_(l,10)); });
+      if(m.sub) mw=Math.max(mw,txtW_(m.sub,9));
+      m.w=Math.min(mw+14, W-8);
       var lv=0; while(lastEnd[lv]!==undefined && lastEnd[lv]+4>m.x) lv++;
-      m.lv=lv; lastEnd[lv]=m.x+m.w; if(lv+1>mkLevels) mkLevels=lv+1;
+      m.lv=lv; lastEnd[lv]=m.x+m.w; levelH[lv]=Math.max(levelH[lv]||0, m.bh);
     });
-    padT=Math.max(30, 8+mkLevels*LV_H);
+    var yy=4, levelY=[];
+    levelH.forEach(function(h,l){ levelY[l]=yy; yy+=h+4; });
+    mk.forEach(function(m){ m.by=levelY[m.lv]; });
+    padT=Math.max(30, yy+2);
   }
   var chartW=W-padL-padR, chartH=H-padT-padB;
 
@@ -3382,6 +3389,11 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml)
   if(maxVal/gridStep>12) gridStep=10;
   var gridSteps=Math.ceil(maxVal/gridStep)||1;
   maxVal=gridSteps*gridStep;
+  if(fixedMax>0){ // Y축 고정: 자동 계산 대신 지정값 사용
+    gridStep=fixedMax<=10?1:(fixedMax<=20?2:5);
+    gridSteps=Math.round(fixedMax/gridStep)||1;
+    maxVal=gridSteps*gridStep;
+  }
 
   var slot=chartW/n;
   var barW=Math.min(52, slot*0.55);
@@ -3407,6 +3419,8 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml)
     r.forEach(function(rate,ci){
       if(rate>0){
         var h=chartH*(rate/maxVal);
+        if(fixedMax>0 && acc+h>chartH) h=chartH-acc; // 고정 축을 넘는 부분은 위에서 잘라냄
+        if(h<=0) return;
         var y=yBase-acc-h;
         svg+='<rect x="'+(x-barW/2)+'" y="'+y+'" width="'+barW+'" height="'+h+'" fill="'+palette[ci]+'" rx="1"/>';
         if(h>=12){
@@ -3415,20 +3429,25 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml)
         acc+=h;
       }
     });
+    if(fixedMax>0 && stackTotals[i]>maxVal){ // 잘린 막대: 실제 합계 표시
+      svg+='<text x="'+x+'" y="'+(padT+11)+'" font-size="9" font-weight="700" fill="#fff" stroke="#0d0f14" stroke-width="2.5" paint-order="stroke" text-anchor="middle">▲ '+stackTotals[i].toFixed(1)+'%</text>';
+    }
     svg+='<text x="'+x+'" y="'+(H-8)+'" font-size="10" fill="#9aa0aa" text-anchor="middle">'+labels[i]+'</text>';
   });
 
   // 변경점 점선 + 라벨 (막대 위)
   mk.forEach(function(m,mi){
     var c=MK_COLORS[mi%MK_COLORS.length];
-    var by=4+m.lv*LV_H, bh=28;
+    var by=m.by, bh=m.bh;
     var bx=Math.min(m.x+3, W-2-m.w); if(bx<2) bx=2;
     svg+='<line x1="'+m.x+'" y1="'+(by+bh)+'" x2="'+m.x+'" y2="'+(padT+chartH)+'" stroke="'+c+'" stroke-width="1.4" stroke-dasharray="4 3" opacity="0.95"/>';
-    svg+='<g><title>'+esc_(m.full)+(m.sub?' ('+esc_(m.sub)+')':'')+'</title>'
-      +'<rect x="'+bx+'" y="'+by+'" width="'+m.w+'" height="'+bh+'" rx="4" fill="#171c2e" stroke="'+c+'" stroke-width="1"/>'
-      +'<text x="'+(bx+7)+'" y="'+(by+12)+'" font-size="10" font-weight="700" fill="'+c+'">'+esc_(m.shown)+'</text>'
-      +(m.sub?'<text x="'+(bx+7)+'" y="'+(by+23)+'" font-size="9" fill="'+c+'">'+esc_(m.sub)+'</text>':'')
-      +'</g>';
+    svg+='<g><title>'+esc_(m.lines.join('\n'))+(m.sub?'\n'+esc_(m.sub):'')+'</title>'
+      +'<rect x="'+bx+'" y="'+by+'" width="'+m.w+'" height="'+bh+'" rx="4" fill="#171c2e" stroke="'+c+'" stroke-width="1"/>';
+    m.lines.forEach(function(l,k){
+      svg+='<text x="'+(bx+7)+'" y="'+(by+11+12*k)+'" font-size="10" font-weight="700" fill="'+c+'">'+esc_(l)+'</text>';
+    });
+    if(m.sub) svg+='<text x="'+(bx+7)+'" y="'+(by+12*m.lines.length+9)+'" font-size="9" fill="'+c+'">'+esc_(m.sub)+'</text>';
+    svg+='</g>';
   });
   svg+='</svg>';
 
@@ -3539,12 +3558,12 @@ function renderReworkModelTrend(){
     else { var ai=allPeriods.indexOf(cp.period); if(ai!==-1 && ai<startIdx) beforeList.push(cp.label+' ('+displayLabel_(cp.period)+'~)'); }
   });
   var markers=Object.keys(mkByIdx).map(Number).sort(function(a,b){return a-b;}).map(function(i){
-    return {idx:i, text:mkByIdx[i].join(' / '), sub:displayLabel_(periods[i])+'~'};
+    return {idx:i, text:mkByIdx[i].join(' / '), names:mkByIdx[i], sub:displayLabel_(periods[i])+'~'};
   });
   var noteHtml=beforeList.length
     ? '<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">◀ 선택 기간 이전에 시작한 변경점: '+beforeList.join(', ')+'</div>'
     : '';
-  buildReworkCombo_('rw-chart-trend', periods.map(displayLabel_), rowsByPeriod, markers, noteHtml);
+  buildReworkCombo_('rw-chart-trend', periods.map(displayLabel_), rowsByPeriod, markers, noteHtml, 10); // Y축 10% 고정
 
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('기간')+'</thead><tbody>';
   periods.forEach(function(p,i){
