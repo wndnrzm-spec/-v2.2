@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060003)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -534,6 +534,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <span id="rw-range-tilde" style="display:none;color:var(--tx3)">~</span>
     <select id="rw-range-end" onchange="renderReworkModelTrend()" style="display:none;background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none;min-width:110px"></select>
     <button class="btn btn-g" onclick="loadReworkTrend(true)" style="padding:9px 18px">새로고침</button>
+    <button class="btn btn-gray" onclick="rwExportXlsx_()" style="padding:9px 14px" title="지금 보이는 탭의 표를 Excel로 저장">Excel 다운로드</button>
+    <button class="btn btn-gray" id="rw-cracklist-btn" onclick="rwCrackList_()" style="display:none;padding:9px 14px" title="화면의 재검파손수에 들어간 SET SN 목록을 Excel로 저장">재검 파손 SN 목록</button>
   </div>
   <div id="rw-status" style="margin-bottom:8px"></div>
 
@@ -575,6 +577,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
         <button class="btn btn-gray" onclick="clearFourMRange()" style="padding:8px 10px;font-size:12px" title="날짜 범위 지우기(전체 기간)">초기화</button>
       </span>
       <button class="btn btn-g" onclick="loadFourMTrend(true)" style="padding:9px 18px">새로고침</button>
+      <button class="btn btn-gray" onclick="rwExportXlsx_()" style="padding:9px 14px" title="지금 보이는 4M Trend 표를 Excel로 저장">Excel 다운로드</button>
+      <button class="btn btn-gray" onclick="rwCrackList_()" style="padding:9px 14px" title="화면의 재검파손수에 들어간 SET SN 목록을 Excel로 저장">재검 파손 SN 목록</button>
       <a href="https://docs.google.com/spreadsheets/d/195V6X6boMyE8uR7dD1jgE2wSzTzzVmNY1agFnu86ta0/edit" target="_blank" rel="noopener" class="btn btn-gray" style="padding:9px 14px;font-size:12px;text-decoration:none">변경점 관리(시트 열기)</a>
     </div>
     <div id="fourm-status" style="margin-bottom:8px"></div>
@@ -3260,6 +3264,7 @@ function basisQS_(){ return _rwBasis==='sn'?'&basis=sn':''; }
 function setRwBasis_(b){
   if(b===_rwBasis) return;
   _rwBasis=b;
+  _rwExp={}; // 기준을 바꾸는 동안에는 이전 기준 데이터가 Excel 로 내려가지 않도록 비움 (다시 불러와 그리면 채워짐)
   applyBasisUI_();
   loadReworkTrend();
   if(document.getElementById('fourm-model-select').value) loadFourMTrend();
@@ -3288,6 +3293,111 @@ function snNote_(json){
   return ' · SET SN 기준: SN 있는 패널 '+t.snRows+'건 중 년·월을 못 읽어 합착일 대체 '+t.snFallback+'건 / SN 없는 패널 '+t.noSN+'건 (앞 SN 행 기준 '+t.noSNFilled+', 합착일 대체 '+t.noSNFallback+')';
 }
 
+// ===== 재검 Trend Excel 다운로드 =====
+// 각 탭을 그릴 때 그 화면의 표/원자료를 _rwExp[탭]에 저장해 두고, 버튼을 누르면 조회조건 / 화면 표 / 원자료(건수 포함) 시트로 내려받음
+var _rwExp={};
+var RW_RAW_HDR_=['투입수','공정 파손수','공정파손율','SET RTN+Aging 파손수','SET RTN+Aging 파손율','합착공정 파손수','합착공정 파손율','재검수','재검파손수','재검파손율'];
+function rwMetCols_(m){
+  if(!m) return ['','','','','','','','','',''];
+  return [m.input,m.crackCount,m.crackRate,m.setRtnAgingCrack,m.setRtnAgingRate,m.processCrack,m.processCrackRate,m.reworkCount,m.reworkCrackCount,m.reworkCrackRate];
+}
+function rwBasisName_(){ return _rwBasis==='sn'?'SET SN 기준':'공정 기준 (합착일)'; }
+function rwPtName_(id){ var s=document.getElementById(id); return (s&&s.options[s.selectedIndex])?s.options[s.selectedIndex].text:''; }
+function rwCacheCond_(json){
+  try{ if(json&&json._cache&&json._cache.at) return [['서버 결과',(json._cache.hit?'저장된 결과':'새로 계산')+' ('+new Date(json._cache.at).toLocaleString('ko-KR')+')']]; }catch(e){}
+  return [];
+}
+// 공정/재검 한 행짜리 표 (전체 추이·모델별 비교·모델별 추이 공통) — rows: [{label, m}] (m=null 이면 생산 없음)
+function rwSimple_(firstLabel,rows){
+  var aoa=[[firstLabel,'투입수','공정','','','재검','',''],['','','공정파손율','SET RTN+Aging 파손율','합착 공정 파손율','재검수','재검파손수','재검파손율']];
+  rows.forEach(function(r){ var m=r.m;
+    aoa.push(m?[r.label,m.input,m.crackRate,m.setRtnAgingRate,m.processCrackRate,m.reworkCount,m.reworkCrackCount,m.reworkCrackRate]:[r.label,'생산 없음','','','','','','']);
+  });
+  return {aoa:aoa,merges:[{s:{r:0,c:0},e:{r:1,c:0}},{s:{r:0,c:1},e:{r:1,c:1}},{s:{r:0,c:2},e:{r:0,c:4}},{s:{r:0,c:5},e:{r:0,c:7}}],pctCols:[2,3,4,7],fmt:'0.0%',skip:2,widths:[26,10,14,22,18,10,12,12]};
+}
+// 원자료 시트 — 건수 + 비율 전부. rows: [{lead:[...], m}]
+function rwRaw_(leadHdr,rows){
+  var n=leadHdr.length, aoa=[leadHdr.concat(RW_RAW_HDR_)];
+  rows.forEach(function(r){ aoa.push(r.lead.concat(rwMetCols_(r.m))); });
+  var w=leadHdr.map(function(){return 22;}).concat([10,12,12,20,20,16,16,10,12,12]);
+  return {aoa:aoa,pctCols:[n+2,n+4,n+6,n+9],fmt:'0.00%',skip:1,widths:w};
+}
+function rwMakeSheet_(spec){
+  var ws=XLSX.utils.aoa_to_sheet(spec.aoa);
+  if(spec.merges) ws['!merges']=spec.merges;
+  if(spec.widths) ws['!cols']=spec.widths.map(function(w){return {wch:w};});
+  var rng=XLSX.utils.decode_range(ws['!ref']);
+  for(var r=(spec.skip||0);r<=rng.e.r;r++){
+    if(spec.pctRow&&!spec.pctRow(r)) continue;
+    (spec.pctCols||[]).forEach(function(c){ var cell=ws[XLSX.utils.encode_cell({r:r,c:c})]; if(cell&&typeof cell.v==='number') cell.z=spec.fmt; });
+  }
+  return ws;
+}
+function rwExportXlsx_(){
+  if(typeof XLSX==='undefined'){ alert('Excel 라이브러리를 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.'); return; }
+  var ex=_rwExp[_rwActiveTab];
+  if(!ex){ alert('내보낼 내용이 없습니다. 먼저 새로고침해서 데이터를 불러오고 모델/기간을 선택해주세요.'); return; }
+  var wb=XLSX.utils.book_new();
+  var cond=[['재검 Trend — '+ex.title],[],['기간 기준',rwBasisName_()]].concat(ex.cond||[],[['다운로드 시각',new Date().toLocaleString('ko-KR')]]);
+  var wsC=XLSX.utils.aoa_to_sheet(cond); wsC['!cols']=[{wch:18},{wch:80}];
+  XLSX.utils.book_append_sheet(wb,wsC,'조회조건');
+  XLSX.utils.book_append_sheet(wb,rwMakeSheet_(ex.screen),'화면 표');
+  XLSX.utils.book_append_sheet(wb,rwMakeSheet_(ex.raw),'원자료');
+  (ex.extra||[]).forEach(function(x){ XLSX.utils.book_append_sheet(wb,rwMakeSheet_(x.spec),x.name); });
+  var d=new Date(), ymd=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
+  var nm='재검Trend_'+ex.file+'_'+(_rwBasis==='sn'?'SETSN기준':'공정기준')+(ex.model?'_'+ex.model:'')+'_'+ymd+'.xlsx';
+  XLSX.writeFile(wb,nm.replace(/[\\\/:*?"<>|]/g,'_'));
+}
+
+// 재검 파손 SET SN 목록 — 화면의 "재검파손수"에 들어간 패널을 서버(같은 계산)에서 받아, 지금 화면의 기간·변경점 필터에 맞게 걸러 Excel 로 저장
+function rwCrackList_(){
+  if(typeof XLSX==='undefined'){ alert('Excel 라이브러리를 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.'); return; }
+  var tab=_rwActiveTab;
+  if(tab!=='trend'&&tab!=='fourm'){ alert('모델별 추이 또는 4M Trend 탭에서 사용합니다.'); return; }
+  var ex=_rwExp[tab];
+  if(!ex||!ex.crack){ alert('먼저 새로고침해서 데이터를 불러오고 모델을 선택해주세요.'); return; }
+  var c=ex.crack, model=ex.model, basisAtClick=_rwBasis;
+  var url=WEBAPP_URL_SUMMARY+'?action=crackedlist&tab='+tab+'&model='+encodeURIComponent(model)+'&periodType='+c.periodType
+    +(tab==='fourm'?'&mode='+c.mode+(c.from?'&from='+c.from:'')+(c.to?'&to='+c.to:''):'')+basisQS_();
+  showLoadingToast_('재검 파손 SET SN 목록 불러오는 중...');
+  fetch(url).then(function(r){return r.json();}).then(function(json){
+    hideLoadingToast_();
+    if(json.error){ alert('오류: '+json.error); return; }
+    if(basisAtClick!==_rwBasis){ alert('기간 기준이 바뀌었습니다. 다시 눌러주세요.'); return; }
+    // 화면과 같은 조건으로 거르기: 모델별 추이 = 조회 기간 + 변경점 필터 / 4M Trend = 보이는 변경점 행 (기간 범위는 서버가 이미 적용)
+    var items=json.items.filter(function(it){
+      if(tab==='trend'){
+        if(c.periods.indexOf(it.period)===-1) return false;
+        var names=it.cps||[];
+        return !(names.length?names.some(function(n){return c.ex[n];}):c.ex[CP_MASS]);
+      }
+      return c.segs.indexOf(it.seg)!==-1;
+    });
+    items.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:(a.sn<b.sn?-1:(a.sn>b.sn?1:0))); });
+    var cnt={}; items.forEach(function(it){ var k=(tab==='trend')?it.period:it.seg; cnt[k]=(cnt[k]||0)+1; });
+    var keys=(tab==='trend')?c.periods:c.segs;
+    var allOk=(items.length===c.total);
+    var sum=[['재검 파손 SET SN 목록 — '+(tab==='trend'?'③ 모델별 추이':'④ 4M Trend')],[],['기간 기준',rwBasisName_()]].concat(ex.cond||[]);
+    sum.push([],['확인: 화면의 재검파손수 ↔ 목록 건수 (같아야 합니다)'],[tab==='trend'?'기간':'변경점','화면 재검파손수','목록 건수','일치']);
+    keys.forEach(function(k){ var a=c.byKey[k]||0, b=cnt[k]||0; if(a||b||tab==='trend') sum.push([tab==='trend'?displayLabel_(k):k,a,b,a===b?'O':'불일치']); });
+    sum.push(['합계',c.total,items.length,allOk?'O':'불일치']);
+    sum.push([],['※ 목록은 SET SN 이 있는 패널 중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).']);
+    var wsS=XLSX.utils.aoa_to_sheet(sum); wsS['!cols']=[{wch:34},{wch:16},{wch:12},{wch:8}];
+    var hdr=['No','SET SN','모델','합착일','기간','변경점','재검결과 행 수'].concat(json.header||[]);
+    var aoa=[hdr];
+    items.forEach(function(it,i){
+      aoa.push([i+1,it.sn,model,it.date,displayLabel_(it.period),(tab==='trend')?((it.cps&&it.cps.length)?it.cps.join(' + '):'양산'):it.seg,it.rwRows].concat(it.rw||[]));
+    });
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,wsS,'요약·확인');
+    XLSX.utils.book_append_sheet(wb,rwMakeSheet_({aoa:aoa,widths:[6,18,16,12,12,30,10],skip:0}),'재검 파손 SET SN');
+    var d=new Date(), ymd=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
+    var nm='재검파손SN목록_'+(tab==='trend'?'모델별추이':'4MTrend')+'_'+(basisAtClick==='sn'?'SETSN기준':'공정기준')+'_'+model+'_'+ymd+'.xlsx';
+    XLSX.writeFile(wb,nm.replace(/[\\\/:*?"<>|]/g,'_'));
+    if(!allOk) alert('주의: 목록 건수('+items.length+')와 화면 재검파손수('+c.total+')가 다릅니다. 파일의 "요약·확인" 시트를 확인해주세요.');
+  }).catch(function(err){ hideLoadingToast_(); alert('불러오기 실패: '+err.message); });
+}
+
 function testRwConn(){
   var dot=document.getElementById('rw-conn-dot');
   var sta=document.getElementById('rw-conn-status');
@@ -3311,6 +3421,7 @@ function rwTab(name){
   document.getElementById('rw-shared-controls').style.display=(name==='fourm'?'none':'flex');
   document.getElementById('rw-period-value').style.display=(name==='bymodel'?'':'none');
   document.getElementById('rw-model-select').style.display=(name==='trend'?'':'none');
+  document.getElementById('rw-cracklist-btn').style.display=(name==='trend'?'':'none');
   document.getElementById('rw-range-start').style.display=(name==='trend'?'':'none');
   document.getElementById('rw-range-tilde').style.display=(name==='trend'?'':'none');
   document.getElementById('rw-range-end').style.display=(name==='trend'?'':'none');
@@ -3560,6 +3671,7 @@ function reworkRowCells_(met){
 
 // ① 전체 추이 — 기간별(주차/월/년) 전체 합산
 function renderReworkDetail(){
+  _rwExp.detail=null;
   var re=document.getElementById('rw-result-detail');
   var chartEl=document.getElementById('rw-chart-detail');
   if(!_reworkData){if(chartEl)chartEl.innerHTML='';re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
@@ -3567,6 +3679,9 @@ function renderReworkDetail(){
   if(!periods.length){if(chartEl)chartEl.innerHTML='';re.innerHTML='<div class="empty">데이터가 없습니다</div>';return;}
   // 차트: ③ 모델별 추이와 같은 쌓은 막대 (전체 합산 값 사용)
   buildReworkCombo_('rw-chart-detail', periods.map(displayLabel_), periods.map(function(p){return _reworkData.data[p].total;}));
+  var rowsD=periods.map(function(p){return {label:displayLabel_(p),m:_reworkData.data[p].total};});
+  _rwExp.detail={title:'① 전체 추이',file:'전체추이',cond:[['기간 단위',rwPtName_('rw-period-type')],['대상','전체 모델 합산']].concat(rwCacheCond_(_reworkData)),
+    screen:rwSimple_('기간',rowsD),raw:rwRaw_(['기간'],rowsD.map(function(r){return {lead:[r.label],m:r.m};}))};
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('기간')+'</thead><tbody>';
   periods.forEach(function(p){
     html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+displayLabel_(p)+'</td>';
@@ -3579,11 +3694,15 @@ function renderReworkDetail(){
 
 // ② 모델별 비교 — 기간 하나 선택, 모델이 첫 열
 function renderReworkByModel(){
+  _rwExp.bymodel=null;
   var re=document.getElementById('rw-result-bymodel');
   if(!_reworkData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var p=document.getElementById('rw-period-value').value;
   var pd=_reworkData.data[p];
   if(!pd||!pd.rows.length){re.innerHTML='<div class="empty">해당 기간 데이터가 없습니다</div>';return;}
+  var rowsB=pd.rows.map(function(r){return {label:r.model,m:r};}).concat([{label:'전체',m:pd.total}]);
+  _rwExp.bymodel={title:'② 모델별 비교',file:'모델별비교',cond:[['기간 단위',rwPtName_('rw-period-type')],['비교 기간',displayLabel_(p)]].concat(rwCacheCond_(_reworkData)),
+    screen:rwSimple_('모델',rowsB),raw:rwRaw_(['기간','모델'],rowsB.map(function(r){return {lead:[displayLabel_(p),r.label],m:r.m};}))};
   var html='<div style="overflow-x:auto"><table class="log-tbl" style="min-width:1000px"><thead>'+reworkHeaderRow_('모델')+'</thead><tbody>';
   pd.rows.forEach(function(row){
     html+='<tr><td style="font-size:12px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--sf)">'+row.model+'</td>';
@@ -3665,6 +3784,7 @@ function cpRowFor_(cd,period,ex,model){
 }
 
 function renderReworkModelTrend(){
+  _rwExp.trend=null;
   var re=document.getElementById('rw-result-trend');
   if(!_reworkData){cpFilterRender_('trend','rw-cp-filter-trend',[]);re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var model=document.getElementById('rw-model-select').value;
@@ -3747,6 +3867,20 @@ function renderReworkModelTrend(){
     }
     html+='</tr>';
   });
+  var rowsT=periods.map(function(p,i){return {label:displayLabel_(p),m:rowsByPeriod[i]};});
+  var cpRows=[['변경점','시작 기간','시작 SN','구간(기간)','필터']];
+  cps.forEach(function(cp){
+    var rgs=(cp.ranges||[]).map(function(rg){return displayLabel_(rg.s)+' ~ '+((rg.e===null||rg.e===undefined)?'(계속)':displayLabel_(rg.e));}).join(' / ');
+    cpRows.push([cp.label,displayLabel_(cp.period),cp.startSN||'',rgs,ex[cp.label]?'제외':'포함']);
+  });
+  _rwExp.trend={title:'③ 모델별 추이',file:'모델별추이',model:model,
+    cond:[['모델',model],['기간 단위',rwPtName_('rw-period-type')],['조회 기간',displayLabel_(periods[0])+' ~ '+displayLabel_(periods[periods.length-1])],
+      ['변경점 필터',filterOn?('제외: '+excludedNames.join(', ')+' (제외한 패널을 뺀 값)'):'제외 없음']].concat(rwCacheCond_(_reworkData)),
+    screen:rwSimple_('기간',rowsT),raw:rwRaw_(['모델','기간'],rowsT.map(function(r){return {lead:[model,r.label],m:r.m};})),
+    crack:{kind:'trend',periodType:document.getElementById('rw-period-type').value,periods:periods.slice(),ex:JSON.parse(JSON.stringify(ex)),
+      byKey:(function(){var o={};periods.forEach(function(p,i){o[p]=rowsByPeriod[i]?rowsByPeriod[i].reworkCrackCount:0;});return o;})(),
+      total:rowsByPeriod.reduce(function(a,r){return a+(r?r.reworkCrackCount:0);},0)},
+    extra:cps.length?[{name:'변경점 시작',spec:{aoa:cpRows,widths:[34,14,18,60,8],skip:0}}]:[]};
   html+='</tbody></table></div>';
   re.innerHTML=html;
 }
@@ -3810,6 +3944,7 @@ function loadFourMTrend(force){
 
 // 변경점(행 그룹) x 기간(열) 교차표 — 각 그룹당 3줄(투입수/Cracked/불량률)
 function renderFourMTrend(){
+  _rwExp.fourm=null;
   var re=document.getElementById('fourm-result');
   if(!_fourMData){re.innerHTML='<div class="empty">먼저 새로고침을 눌러주세요</div>';return;}
   var allSegments=_fourMData.segments;
@@ -3898,6 +4033,31 @@ function renderFourMTrend(){
 
   renderGroup_(filterOn4?'CUM (선택한 변경점 누적)':'CUM (전체 누적)', function(p){ return cumData.periods[p]; }, function(){ return cumData.total; }, true);
 
+  (function(){ // Excel 용: 화면 표와 같은 구조(변경점당 투입수/파손수/불량률 3줄, 기간마다 공정·재검) + 원자료
+    var hdr0=['변경점','구분'], hdr1=['',''], merges=[{s:{r:0,c:0},e:{r:1,c:0}},{s:{r:0,c:1},e:{r:1,c:1}}], pctCols=[], widths=[34,16];
+    periods.map(displayLabel_).concat(['총합계']).forEach(function(l,i){ hdr0.push(l,''); hdr1.push('공정','재검'); merges.push({s:{r:0,c:2+i*2},e:{r:0,c:3+i*2}}); pctCols.push(2+i*2,3+i*2); widths.push(10,10); });
+    var aoa=[hdr0,hdr1], rawRows=[];
+    function grp(label,getP,getT){
+      var ms=periods.map(getP).concat([getT()]);
+      var r1=[label,'투입수'], r2=['','파손수(Cracked)'], r3=['','불량률'];
+      ms.forEach(function(m){ r1.push(m.input,m.reworkCount); r2.push(m.crackCount,m.reworkCrackCount); r3.push(m.input?m.crackRate:'-',m.reworkCount?m.reworkCrackRate:'-'); });
+      var b=aoa.length; aoa.push(r1,r2,r3); merges.push({s:{r:b,c:0},e:{r:b+2,c:0}});
+      periods.forEach(function(p,i){ rawRows.push({lead:[label,displayLabel_(p)],m:ms[i]}); });
+      rawRows.push({lead:[label,'총합계'],m:ms[ms.length-1]});
+    }
+    segments.forEach(function(s){ var sd=_fourMData.data[s]; grp(s,function(p){return sd.periods[p];},function(){return sd.total;}); });
+    grp(filterOn4?'CUM (선택한 변경점 누적)':'CUM (전체 누적)',function(p){return cumData.periods[p];},function(){return cumData.total;});
+    var fm=_fourMData.from, to=_fourMData.to;
+    _rwExp.fourm={title:'④ 4M Trend',file:'4MTrend',model:model4,
+      cond:[['모델',model4],['보기 방식',_fourMData.mode==='combo'?'중복 변경점(조합)':'개별 변경점'],['기간 단위',rwPtName_('fourm-period-type')],
+        [(_rwBasis==='sn'?'SET SN 월 범위':'합착일 범위'),(fm||to)?((fm||'처음')+' ~ '+(to||'끝')):'전체 기간'],
+        ['변경점 필터',filterOn4?('제외: '+excluded4.map(function(it){return it.label;}).join(', ')+' (보이는 행만 합산한 CUM·총합계)'):'제외 없음']].concat(rwCacheCond_(_fourMData)),
+      screen:{aoa:aoa,merges:merges,pctCols:pctCols,fmt:'0.00%',skip:2,pctRow:function(r){return r>=2&&(r-2)%3===2;},widths:widths},
+      raw:rwRaw_(['변경점','기간'],rawRows),
+      crack:{kind:'fourm',periodType:document.getElementById('fourm-period-type').value,mode:_fourMData.mode,from:fm||'',to:to||'',segs:segments.slice(),
+        byKey:(function(){var o={};segments.forEach(function(sg){o[sg]=_fourMData.data[sg].total.reworkCrackCount;});return o;})(),
+        total:cumData.total.reworkCrackCount}};
+  })();
   html+='</tbody></table></div>';
   if(filterOn4) html='<div style="font-size:11px;color:var(--green);margin-bottom:6px">⚙ 변경점 필터 적용 중 — 제외: '+excluded4.map(function(it){return cpEsc_(it.label);}).join(', ')+' (보이는 행만 합산한 CUM·총합계)</div>'+html;
   re.innerHTML=html;
