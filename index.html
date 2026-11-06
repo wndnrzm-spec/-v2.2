@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060005)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060006)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -3401,7 +3401,7 @@ function rwCrackSheets_(tab,ex,json,basis){
   var hdr=['No','SET SN','모델','합착일','기간','변경점','재검결과 행 수'].concat(json.header||[]);
   var aoa=[hdr];
   items.forEach(function(it,i){
-    aoa.push([i+1,it.sn,model,it.date,displayLabel_(it.period),(tab==='trend')?((it.cps&&it.cps.length)?it.cps.join(' + '):'양산'):it.seg,it.rwRows].concat(it.rw||[]));
+    aoa.push([i+1,it.sn,model,it.date,displayLabel_(it.period),(tab==='trend')?((it.cps&&it.cps.length)?it.cps.join(' + '):'양산'):it.seg,it.rwRows].concat((it.rw||[]).map(rwFixSerial_)));
   });
   return {sum:wsS,list:rwMakeSheet_({aoa:aoa,widths:[6,18,16,12,12,30,10],skip:0}),allOk:allOk,n:items.length,total:c.total};
 }
@@ -3501,6 +3501,12 @@ function rwSaveWb_(wb,nm,chartPromise){
       return true;
     }).catch(function(){ return fallback(); });
   });
+}
+// 재검결과의 Month 칸처럼 "숫자(5)"가 날짜 서식인 셀은 서버에서 1900-01-04 로 넘어옴 → 원래 숫자(5)로 되돌림
+function rwFixSerial_(v){
+  var m=(typeof v==='string')&&/^(1899|1900)-(\d\d)-(\d\d)$/.exec(v);
+  if(!m) return v;
+  return Math.round((Date.UTC(+m[1],+m[2]-1,+m[3])-Date.UTC(1899,11,30))/86400000);
 }
 function rwExportXlsx_(){
   if(typeof XLSX==='undefined'){ alert('Excel 라이브러리를 불러오지 못했습니다. 페이지를 새로고침한 뒤 다시 시도해주세요.'); return; }
