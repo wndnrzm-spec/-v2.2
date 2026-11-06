@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611050006)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -514,6 +514,12 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     <button class="tab" onclick="rwTab('fourm')">&#x2463; 4M Trend</button>
   </div>
 
+  <div id="rw-basis-bar" style="display:flex;gap:8px;margin:10px 0 0;align-items:center;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--tx3);font-weight:600">기간 기준</span>
+    <button class="btn btn-g" id="rw-basis-date" onclick="setRwBasis_('date')" style="padding:7px 14px;font-size:12px">공정 기준</button>
+    <button class="btn btn-gray" id="rw-basis-sn" onclick="setRwBasis_('sn')" style="padding:7px 14px;font-size:12px">SET SN 기준</button>
+    <span id="rw-basis-note" style="font-size:11.5px;color:var(--tx3)">합착일로 기간을 구분합니다 (기존 방식).</span>
+  </div>
   <div id="rw-shared-controls" style="display:flex;gap:8px;margin:10px 0;align-items:center;flex-wrap:wrap">
     <select id="rw-period-type" onchange="loadReworkTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:9px 12px;outline:none">
       <option value="week">주차별</option>
@@ -562,7 +568,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
         <option value="single">개별 변경점</option>
         <option value="combo">중복 변경점(조합)</option>
       </select>
-      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx3)">합착일
+      <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tx3)"><span id="fourm-range-label">합착일</span>
         <input type="date" id="fourm-from" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:8px 10px;outline:none;color-scheme:dark">
         ~
         <input type="date" id="fourm-to" onchange="loadFourMTrend()" style="background:var(--sf);border:1.5px solid var(--bd2);border-radius:var(--r);color:var(--tx);font-size:13px;font-weight:600;padding:8px 10px;outline:none;color-scheme:dark">
@@ -3248,6 +3254,40 @@ function renderStorageByModel(){
 }
 
 // ===== 재검 Trend =====
+// 기간 기준: 'date' = 공정 기준(합착일, 기존 방식) / 'sn' = SET SN 기준 (SN의 년·월 코드로 기간 구분, SN 없는 공정 패널은 RAW 바로 앞 SN 행을 따라감)
+var _rwBasis='date';
+function basisQS_(){ return _rwBasis==='sn'?'&basis=sn':''; }
+function setRwBasis_(b){
+  if(b===_rwBasis) return;
+  _rwBasis=b;
+  applyBasisUI_();
+  loadReworkTrend();
+  if(document.getElementById('fourm-model-select').value) loadFourMTrend();
+}
+function applyBasisUI_(){
+  var sn=(_rwBasis==='sn');
+  document.getElementById('rw-basis-date').className='btn '+(sn?'btn-gray':'btn-g');
+  document.getElementById('rw-basis-sn').className='btn '+(sn?'btn-g':'btn-gray');
+  ['rw-period-type','fourm-period-type'].forEach(function(id){ // SN 에는 주차 정보가 없어 주별은 공정 기준에서만
+    var sel=document.getElementById(id); if(!sel) return;
+    Array.prototype.forEach.call(sel.options,function(o){ if(o.value==='week') o.disabled=sn; });
+    if(sn&&sel.value==='week') sel.value='month';
+  });
+  var lb=document.getElementById('fourm-range-label'); if(lb) lb.textContent=sn?'SET SN 월':'합착일';
+  document.getElementById('rw-basis-note').textContent=sn
+    ?'SN의 년·월 코드로 기간을 구분합니다. SN 없는 공정 패널은 RAW 바로 앞 SN 행의 월·변경점을 따릅니다. (월별/년도별만)'
+    :'합착일로 기간을 구분합니다 (기존 방식).';
+}
+// SET SN 기준 진단 요약: SN을 못 읽어 합착일로 대체한 건수 등 (모델 전체 합산)
+function snNote_(json){
+  if(!json||json.basis!=='sn'||!json.snStat) return '';
+  var t={snRows:0,snFallback:0,noSN:0,noSNFilled:0,noSNFallback:0};
+  var st=json.snStat;
+  var list=(typeof st.snRows==='number')?[st]:Object.keys(st).map(function(k){return st[k];});
+  list.forEach(function(o){ Object.keys(t).forEach(function(k){ t[k]+=(o[k]||0); }); });
+  return ' · SET SN 기준: SN 있는 패널 '+t.snRows+'건 중 년·월을 못 읽어 합착일 대체 '+t.snFallback+'건 / SN 없는 패널 '+t.noSN+'건 (앞 SN 행 기준 '+t.noSNFilled+', 합착일 대체 '+t.noSNFallback+')';
+}
+
 function testRwConn(){
   var dot=document.getElementById('rw-conn-dot');
   var sta=document.getElementById('rw-conn-status');
@@ -3286,7 +3326,7 @@ function loadReworkTrend(force){
   var pt=document.getElementById('rw-period-type').value;
   var status=document.getElementById('rw-status');
   showLoadingToast_('재검 Trend 데이터 불러오는 중...');
-  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt+(force?'&nocache=1':''); // 모델 필터는 서버에 안 보냄 — 항상 전체 모델을 받아서 화면에서만 골라봄 (드롭다운 목록 유지 위해)
+  var url=WEBAPP_URL_SUMMARY+'?action=reworktrend&periodType='+pt+basisQS_()+(force?'&nocache=1':''); // 모델 필터는 서버에 안 보냄 — 항상 전체 모델을 받아서 화면에서만 골라봄 (드롭다운 목록 유지 위해)
   fetch(url).then(function(r){return r.json();}).then(function(json){
     if(json.error){status.innerHTML='<div style="color:var(--red);font-size:13px">⚠ 오류: '+json.error+'</div>';hideLoadingToast_();return;}
     _reworkData=json;
@@ -3323,7 +3363,7 @@ function loadReworkTrend(force){
     if(json.periods.indexOf(prevRs)!==-1) rsSel.value=prevRs; else if(json.periods.length) rsSel.value=json.periods[0];
     if(json.periods.indexOf(prevRe)!==-1) reSel.value=prevRe; else if(json.periods.length) reSel.value=json.periods[json.periods.length-1];
 
-    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개'+cacheNote_(json)+'</div>';
+    status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — 기간 '+json.periods.length+'개, 모델 '+modelNames.length+'개'+snNote_(json)+cacheNote_(json)+'</div>';
     hideLoadingToast_();
     renderAllReworkViews();
   }).catch(function(err){
@@ -3740,7 +3780,7 @@ function loadFourMTrend(force){
   if(!model){ cpFilterRender_('fourm','fourm-cp-filter',[]); re.innerHTML='<div class="empty">모델을 선택해주세요</div>'; return; }
   showLoadingToast_('4M Trend 데이터 불러오는 중...');
   status.innerHTML='<div style="font-size:12px;color:var(--tx2)">불러오는 중...</div>';
-  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt+'&mode='+mode+(dFrom?'&from='+dFrom:'')+(dTo?'&to='+dTo:'')+(force?'&nocache=1':''))
+  fetch(WEBAPP_URL_SUMMARY+'?action=fourmtrend&model='+encodeURIComponent(model)+'&periodType='+pt+'&mode='+mode+basisQS_()+(dFrom?'&from='+dFrom:'')+(dTo?'&to='+dTo:'')+(force?'&nocache=1':''))
     .then(function(r){return r.json();})
     .then(function(json){
       hideLoadingToast_();
@@ -3760,7 +3800,7 @@ function loadFourMTrend(force){
         return;
       }
       _fourMData=json;
-      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(mode==='combo'?'중복 변경점(조합) ':'개별 변경점 ')+json.segments.length+'개, 기간 '+json.periods.length+'개'+((dFrom||dTo)?' · 합착일 '+(dFrom||'처음')+' ~ '+(dTo||'끝'):'')+cacheNote_(json)+'</div>';
+      status.innerHTML='<div style="font-size:12px;color:var(--green)">✓ 불러오기 완료 — '+(mode==='combo'?'중복 변경점(조합) ':'개별 변경점 ')+json.segments.length+'개, 기간 '+json.periods.length+'개'+((dFrom||dTo)?' · '+(_rwBasis==='sn'?'SET SN 월 ':'합착일 ')+(dFrom||'처음')+' ~ '+(dTo||'끝'):'')+snNote_(json)+cacheNote_(json)+'</div>';
       renderFourMTrend();
     }).catch(function(err){
       hideLoadingToast_();
