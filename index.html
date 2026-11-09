@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611090001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611090002)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2576,6 +2576,24 @@ function toggleFullscreen_(id){
   }
 }
 
+// 모델별 추이 차트: 전체화면에서는 Y축을 10%까지, 닫으면 다시 5%
+var _fsComboId=null;
+function onComboFullscreen_(){
+  try{
+    var fe=document.fullscreenElement||document.webkitFullscreenElement;
+    var id=fe&&fe.id, a;
+    if(id==='rw-chart-trend'&&window._comboArgs&&window._comboArgs[id]){
+      _fsComboId=id; a=window._comboArgs[id].slice(); a[5]=10; a.push(true);
+      buildReworkCombo_.apply(null,a);
+    } else if(!fe&&_fsComboId&&window._comboArgs&&window._comboArgs[_fsComboId]){
+      a=window._comboArgs[_fsComboId].slice(); a.push(true); _fsComboId=null;
+      buildReworkCombo_.apply(null,a);
+    }
+  }catch(e){}
+}
+document.addEventListener('fullscreenchange',onComboFullscreen_);
+document.addEventListener('webkitfullscreenchange',onComboFullscreen_);
+
 function showLoadingToast_(msg){
   var el=document.getElementById('global-toast');
   if(!el){
@@ -3693,7 +3711,8 @@ function renderAllReworkViews(){
 //   cont=true 면 조회 기간 밖으로 이어지는 구간(오른쪽 끝에 화살표), before=true 면 조회 기간 이전에 시작한 변경점(◀)
 // noteHtml(선택): 차트 위에 붙일 안내 문구
 // fixedMax(선택): Y축 최대값(%) 고정. 넘는 막대는 위에서 잘라 그리고 "▲ 실제값"을 표시 (모델별 추이: 5)
-function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml, fixedMax){
+function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml, fixedMax, noStore){
+  if(!noStore){ (window._comboArgs=window._comboArgs||{})[containerId]=[containerId,labels,rowsByPeriod,markers,noteHtml,fixedMax]; } // 전체화면 전환 시 같은 데이터로 다시 그리기 위해 보관
   var el=document.getElementById(containerId);
   if(!el) return;
   if(!labels.length){ el.innerHTML='<div class="empty">데이터가 없습니다</div>'; return; }
