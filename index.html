@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611090003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611090004)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -3449,7 +3449,7 @@ function rwMakeSheet_(spec){
 function rwCrackSheets_(tab,ex,json,basis){
   var c=ex.crack, model=ex.model;
   // 화면과 같은 조건으로 거르기: 모델별 추이 = 조회 기간 + 변경점 필터 / 4M Trend = 보이는 변경점 행 (기간 범위는 서버가 이미 적용)
-  var items=json.items.filter(function(it){
+  var allItems=json.items.filter(function(it){
     if(tab==='trend'){
       if(c.periods.indexOf(it.period)===-1) return false;
       var names=it.cps||[];
@@ -3457,21 +3457,48 @@ function rwCrackSheets_(tab,ex,json,basis){
     }
     return c.segs.indexOf(it.seg)!==-1;
   });
-  items.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:(a.sn<b.sn?-1:(a.sn>b.sn?1:0))); });
-  var cnt={}; items.forEach(function(it){ var k=(tab==='trend')?it.period:it.seg; cnt[k]=(cnt[k]||0)+1; });
+  allItems.sort(function(a,b){ return a.date<b.date?-1:(a.date>b.date?1:(a.sn<b.sn?-1:(a.sn>b.sn?1:0))); });
+  // 서버가 양품 재검까지 보내 주면(crack 표시 있음) 전체 목록 시트도 만든다. 옛 형식(파손만)이면 지금까지처럼 파손 목록만.
+  var hasFlag=allItems.length?(allItems[0].crack!==undefined):(json.items.length?json.items[0].crack!==undefined:false);
+  var items=hasFlag?allItems.filter(function(it){return it.crack;}):allItems; // 파손 목록
+  var cnt={}, cntAll={};
+  items.forEach(function(it){ var k=(tab==='trend')?it.period:it.seg; cnt[k]=(cnt[k]||0)+1; });
+  allItems.forEach(function(it){ var k=(tab==='trend')?it.period:it.seg; cntAll[k]=(cntAll[k]||0)+1; });
   var keys=(tab==='trend')?c.periods:c.segs;
-  var allOk=(items.length===c.total);
-  var sum=[['재검 파손 SET SN 목록 확인 — '+(tab==='trend'?'③ 모델별 추이':'④ 4M Trend')],[],['확인: 화면의 재검파손수 ↔ 목록 건수 (같아야 합니다)'],[tab==='trend'?'기간':'변경점','화면 재검파손수','목록 건수','일치']];
-  keys.forEach(function(k){ var a=c.byKey[k]||0, b=cnt[k]||0; if(a||b||tab==='trend') sum.push([tab==='trend'?displayLabel_(k):k,a,b,a===b?'O':'불일치']); });
-  sum.push(['합계',c.total,items.length,allOk?'O':'불일치']);
-  sum.push([],['※ 목록은 SET SN 이 있는 패널 중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).']);
-  var wsS=XLSX.utils.aoa_to_sheet(sum); wsS['!cols']=[{wch:34},{wch:16},{wch:12},{wch:8}];
+  var crackOk=(items.length===c.total), allOkRw=hasFlag?(allItems.length===c.rwTotal):true;
+  var allOk=crackOk&&allOkRw;
+  var kn=tab==='trend'?'기간':'변경점';
+  var sum=[['재검 SET SN 목록 확인 — '+(tab==='trend'?'③ 모델별 추이':'④ 4M Trend')],[],
+    ['확인: 화면 숫자 ↔ 목록 건수 (같아야 합니다)'],
+    hasFlag?[kn,'화면 재검수','목록(전체) 건수','일치','화면 재검파손수','목록(파손) 건수','일치']:[kn,'화면 재검파손수','목록 건수','일치']];
+  keys.forEach(function(k){
+    var a=c.byKey[k]||0, b=cnt[k]||0, nm=(tab==='trend')?displayLabel_(k):k;
+    if(hasFlag){
+      var ra=(c.rwByKey&&c.rwByKey[k])||0, rb=cntAll[k]||0;
+      if(a||b||ra||rb||tab==='trend') sum.push([nm,ra,rb,ra===rb?'O':'불일치',a,b,a===b?'O':'불일치']);
+    } else if(a||b||tab==='trend') sum.push([nm,a,b,a===b?'O':'불일치']);
+  });
+  if(hasFlag) sum.push(['합계',c.rwTotal,allItems.length,allOkRw?'O':'불일치',c.total,items.length,crackOk?'O':'불일치']);
+  else sum.push(['합계',c.total,items.length,crackOk?'O':'불일치']);
+  sum.push([],[hasFlag
+    ?'※ "전체" 목록은 이 화면의 재검수에 들어간 SET SN 전부(양품 포함)이고, "파손" 목록은 그중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).'
+    :'※ 목록은 SET SN 이 있는 패널 중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).']);
+  var wsS=XLSX.utils.aoa_to_sheet(sum); wsS['!cols']=[{wch:34},{wch:16},{wch:16},{wch:8},{wch:16},{wch:16},{wch:8}];
   var hdr=['No','SET SN','모델','합착일','기간','변경점','재검결과 행 수'].concat(json.header||[]);
   var aoa=[hdr];
   items.forEach(function(it,i){
     aoa.push([i+1,it.sn,model,it.date,displayLabel_(it.period),(tab==='trend')?((it.cps&&it.cps.length)?it.cps.join(' + '):'양산'):it.seg,it.rwRows].concat((it.rw||[]).map(rwFixSerial_)));
   });
-  return {sum:wsS,list:rwMakeSheet_({aoa:aoa,widths:[6,18,16,12,12,30,10],skip:0}),allOk:allOk,n:items.length,total:c.total};
+  var res={sum:wsS,list:rwMakeSheet_({aoa:aoa,widths:[6,18,16,12,12,30,10],skip:0}),allOk:allOk,n:items.length,total:c.total,hasAll:hasFlag};
+  if(hasFlag){
+    var a2=[['No','SET SN','모델','합착일','기간','변경점','재검 결과','재검일자(처음)','재검SN 등장 횟수']];
+    allItems.forEach(function(it,i){
+      a2.push([i+1,it.sn,model,it.date,displayLabel_(it.period),(tab==='trend')?((it.cps&&it.cps.length)?it.cps.join(' + '):'양산'):it.seg,it.crack?'파손':'양품(파손 아님)',it.rwDate||'',it.rwN||0]);
+    });
+    res.all=rwMakeSheet_({aoa:a2,widths:[6,18,16,12,12,30,16,14,12],skip:0});
+    res.nAll=allItems.length; res.totalAll=c.rwTotal;
+  }
+  return res;
 }
 
 // ===== 차트 → PNG (Excel "차트" 시트용) =====
@@ -3599,16 +3626,17 @@ function rwExportXlsx_(){
   var c=ex.crack;
   var url=WEBAPP_URL_SUMMARY+'?action=crackedlist&tab='+tab+'&model='+encodeURIComponent(ex.model)+'&periodType='+c.periodType
     +(tab==='fourm'?'&mode='+c.mode+(c.from?'&from='+c.from:'')+(c.to?'&to='+c.to:''):'')+(basisAtClick==='sn'?'&basis=sn':'');
-  showLoadingToast_('Excel 만드는 중 (재검 파손 SET SN 목록·차트 포함)...');
+  showLoadingToast_('Excel 만드는 중 (재검 SET SN 목록·차트 포함)...');
   fetch(url).then(function(r){return r.json();}).then(function(json){
     hideLoadingToast_();
     if(json.error) throw new Error(json.error);
     if(basisAtClick!==_rwBasis){ alert('기간 기준이 바뀌었습니다. 다시 눌러주세요.'); return; }
     var r=rwCrackSheets_(tab,ex,json,basisAtClick);
     XLSX.utils.book_append_sheet(wb,r.sum,'요약·확인');
+    if(r.all) XLSX.utils.book_append_sheet(wb,r.all,'재검 SET SN 전체');
     XLSX.utils.book_append_sheet(wb,r.list,'재검 파손 SET SN');
     rwSaveWb_(wb,nm,chartP);
-    if(!r.allOk) alert('주의: 목록 건수('+r.n+')와 화면 재검파손수('+r.total+')가 다릅니다. 파일의 "요약·확인" 시트를 확인해주세요.');
+    if(!r.allOk) alert('주의: 목록 건수가 화면 숫자와 다릅니다 (파손 목록 '+r.n+' / 화면 재검파손수 '+r.total+(r.hasAll?', 전체 목록 '+r.nAll+' / 화면 재검수 '+r.totalAll:'')+'). 파일의 "요약·확인" 시트를 확인해주세요.');
   }).catch(function(err){
     hideLoadingToast_();
     rwSaveWb_(wb,nm,chartP); // 목록을 못 받아도 표(+차트)는 저장
@@ -4097,7 +4125,9 @@ function renderReworkModelTrend(){
     screen:rwSimple_('기간',rowsT),raw:rwRaw_(['모델','기간'],rowsT.map(function(r){return {lead:[model,r.label],m:r.m};})),
     crack:{kind:'trend',periodType:document.getElementById('rw-period-type').value,periods:periods.slice(),ex:JSON.parse(JSON.stringify(ex)),
       byKey:(function(){var o={};periods.forEach(function(p,i){o[p]=rowsByPeriod[i]?rowsByPeriod[i].reworkCrackCount:0;});return o;})(),
-      total:rowsByPeriod.reduce(function(a,r){return a+(r?r.reworkCrackCount:0);},0)},
+      total:rowsByPeriod.reduce(function(a,r){return a+(r?r.reworkCrackCount:0);},0),
+      rwByKey:(function(){var o={};periods.forEach(function(p,i){o[p]=rowsByPeriod[i]?rowsByPeriod[i].reworkCount:0;});return o;})(),
+      rwTotal:rowsByPeriod.reduce(function(a,r){return a+(r?r.reworkCount:0);},0)},
     extra:cps.length?[{name:'변경점 시작',spec:{aoa:cpRows,widths:[34,14,18,60,8],skip:0}}]:[]};
   html+='</tbody></table></div>';
   re.innerHTML=html;
@@ -4274,7 +4304,9 @@ function renderFourMTrend(){
       raw:rwRaw_(['변경점','기간'],rawRows),
       crack:{kind:'fourm',periodType:document.getElementById('fourm-period-type').value,mode:_fourMData.mode,from:fm||'',to:to||'',segs:segments.slice(),
         byKey:(function(){var o={};segments.forEach(function(sg){o[sg]=_fourMData.data[sg].total.reworkCrackCount;});return o;})(),
-        total:cumData.total.reworkCrackCount}};
+        total:cumData.total.reworkCrackCount,
+        rwByKey:(function(){var o={};segments.forEach(function(sg){o[sg]=_fourMData.data[sg].total.reworkCount;});return o;})(),
+        rwTotal:cumData.total.reworkCount}};
   })();
   html+='</tbody></table></div>';
   if(filterOn4) html='<div style="font-size:11px;color:var(--green);margin-bottom:6px">⚙ 변경점 필터 적용 중 — 제외: '+excluded4.map(function(it){return cpEsc_(it.label);}).join(', ')+' (보이는 행만 합산한 CUM·총합계)</div>'+html;
