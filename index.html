@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060006)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611060007)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2683,6 +2683,55 @@ function loadReworkFileStatus(){
     }).catch(function(){ el.textContent='확인 실패'; });
 }
 
+// ===== 재검 파일 업로드 직후: RAW 에 없는 SN(집계에서 빠지는 것) 알림 =====
+var _rwUnmatched=null;
+function rwUnmatchedNotice_(j,el){
+  var u=j&&j.unmatched; if(!u) return;
+  if(u.error){ el.textContent+=' (RAW 매칭 확인 실패: '+u.error+')'; return; }
+  _rwUnmatched={u:u,file:j.fileName};
+  var nr=u.result.unmatched, ns=u.sn.unmatched;
+  if(!nr&&!ns){ el.textContent+=' · RAW 매칭 누락 없음 ✓'; return; }
+  el.textContent+=' · ⚠ RAW 에 없는 SN: 재검결과 '+nr+'건, 재검SN '+ns+'개';
+  var old=document.getElementById('rw-unm-modal'); if(old) old.remove();
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function tbl(items,cols,max){
+    var h='<table style="width:100%;border-collapse:collapse;font-size:12px"><tr>'+cols.map(function(c){return '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--bd2);color:var(--tx3);white-space:nowrap">'+c[0]+'</th>';}).join('')+'</tr>';
+    items.slice(0,max).forEach(function(it){ h+='<tr>'+cols.map(function(c){return '<td style="padding:3px 8px;border-bottom:1px solid var(--bd);white-space:nowrap">'+esc(it[c[1]]==null?'':it[c[1]])+'</td>';}).join('')+'</tr>'; });
+    return h+'</table>'+(items.length>max?'<div style="font-size:11px;color:var(--tx3);margin-top:4px">… 외 '+(items.length-max)+'건 (전체는 Excel 로 받으세요)</div>':'');
+  }
+  var m=document.createElement('div'); m.id='rw-unm-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div style="background:var(--sf2);border:1px solid var(--bd2);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:18px">'
+    +'<div style="font-size:15px;font-weight:700;color:var(--amber,#ff9800);margin-bottom:6px">⚠ RAW 에 매칭되지 않은 SN 이 있습니다 — 이 SN 은 재검 집계에서 빠집니다</div>'
+    +'<div style="font-size:12px;color:var(--tx2);margin-bottom:10px;line-height:1.6">'+esc(j.fileName)+' 기준 · RAW(전체 연도)의 SET SN '+u.rawSNCount+'개와 비교 (앞 14자리·대문자)<br>'
+    +'· 재검결과(불량 S/N): '+u.result.total+'건 중 <b>'+nr+'건</b> 없음'+(u.result.blank?' (SN 비어 있는 행 '+u.result.blank+'건은 비교 제외)':'')+'<br>'
+    +'· 재검SN(재검 수량): '+u.sn.total+'개 중 <b>'+ns+'개</b> 없음<br>'
+    +'<span style="color:var(--tx3)">원인 예: 해당 일보가 아직 RAW 에 없음 / SN 오타·형식 차이 / RAW 에 SET SN 이 비어 있음</span></div>'
+    +(nr?'<div style="font-size:12px;font-weight:700;margin:8px 0 4px">재검결과(불량) 미매칭</div>'+tbl(u.result.items,[['SET SN','sn'],['재검일자','date'],['모델명','model'],['불량구분','type'],['비고','note']],30):'')
+    +(ns?'<div style="font-size:12px;font-weight:700;margin:12px 0 4px">재검SN 미매칭</div>'+tbl(u.sn.items,[['SET SN','sn'],['재검일자','date'],['건수','count']],30):'')
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="rwUnmatchedXlsx_()" style="background:var(--sf);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">목록 Excel 다운로드</button>'
+    +'<button onclick="document.getElementById(\'rw-unm-modal\').remove()" style="background:var(--sf);border:1px solid var(--bd2);color:var(--tx2);border-radius:8px;padding:7px 14px;cursor:pointer">닫기</button></div></div>';
+  document.body.appendChild(m);
+}
+function rwUnmatchedXlsx_(){
+  if(!_rwUnmatched||typeof XLSX==='undefined'){ alert('내보낼 목록이 없습니다.'); return; }
+  var u=_rwUnmatched.u, wb=XLSX.utils.book_new();
+  var sum=[['재검 파일 업로드 — RAW 미매칭 SN'],[],['파일',_rwUnmatched.file],['RAW SET SN 수',u.rawSNCount],
+    ['재검결과(불량 S/N) 전체',u.result.total],['  RAW 에 없음',u.result.unmatched],['  SN 비어 있어 비교 제외',u.result.blank],
+    ['재검SN 전체(고유 SN)',u.sn.total],['  RAW 에 없음',u.sn.unmatched],[],
+    ['※ 비교 규칙: SN 앞 14자리·대문자 (집계와 동일). RAW 에 없는 SN 은 재검 Trend 집계에서 빠집니다.']];
+  if(u.capped) sum.push(['※ 건수가 많아 목록은 일부만 담겼습니다 (각 20000건까지)']);
+  var ws0=XLSX.utils.aoa_to_sheet(sum); ws0['!cols']=[{wch:30},{wch:40}]; XLSX.utils.book_append_sheet(wb,ws0,'요약');
+  var a1=[['No','SET SN','재검일자','모델명','불량구분','비고']];
+  u.result.items.forEach(function(it,i){ a1.push([i+1,it.sn,it.date,it.model,it.type,it.note]); });
+  var w1=XLSX.utils.aoa_to_sheet(a1); w1['!cols']=[{wch:6},{wch:18},{wch:12},{wch:22},{wch:20},{wch:30}]; XLSX.utils.book_append_sheet(wb,w1,'재검결과 미매칭');
+  var a2=[['No','SET SN','재검일자(처음)','건수']];
+  u.sn.items.forEach(function(it,i){ a2.push([i+1,it.sn,it.date,it.count]); });
+  var w2=XLSX.utils.aoa_to_sheet(a2); w2['!cols']=[{wch:6},{wch:18},{wch:14},{wch:8}]; XLSX.utils.book_append_sheet(wb,w2,'재검SN 미매칭');
+  var d=new Date(), ymd=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
+  XLSX.writeFile(wb,'재검_RAW미매칭SN_'+ymd+'.xlsx');
+}
+
 function uploadReworkFile(file){
   if(!file) return;
   var el=document.getElementById('rework-file-name');
@@ -2704,6 +2753,7 @@ function uploadReworkFile(file){
           el.textContent=j.fileName+' — 재검결과 '+j.resultRows+'행, 재검SN '+j.snRows+'행 반영 완료';
           _reworkData=null;
           loadReworkTrend();
+          try{ rwUnmatchedNotice_(j,el); }catch(e){}
         } else {
           el.textContent='업로드 실패: '+j.error;
           alert('⚠ 업로드 실패\n\n'+j.error);
