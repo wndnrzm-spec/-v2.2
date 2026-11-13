@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611130001)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611130002)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2720,13 +2720,15 @@ function rwUnmatchedNotice_(j,el){
   var m=document.createElement('div'); m.id='rw-unm-modal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
   m.innerHTML='<div style="background:var(--sf2);border:1px solid var(--bd2);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:18px">'
-    +'<div style="font-size:15px;font-weight:700;color:var(--amber,#ff9800);margin-bottom:6px">⚠ RAW 에 매칭되지 않은 SN 이 있습니다 — 이 SN 은 재검 집계에서 빠집니다</div>'
+    +'<div style="font-size:15px;font-weight:700;color:var(--amber,#ff9800);margin-bottom:6px">⚠ RAW 에 매칭되지 않은 SN 이 있습니다 — 아래 구분에 따라 재검수에만 반영되거나 제외됩니다</div>'
     +'<div style="font-size:12px;color:var(--tx2);margin-bottom:10px;line-height:1.6">'+esc(j.fileName)+' 기준 · RAW(전체 연도)의 SET SN '+u.rawSNCount+'개와 비교 (앞 14자리·대문자)<br>'
     +'· 재검결과(불량 S/N): '+u.result.total+'건 중 <b>'+nr+'건</b> 없음'+(u.result.blank?' (SN 비어 있는 행 '+u.result.blank+'건은 비교 제외)':'')+'<br>'
     +'· 재검SN(재검 수량): '+u.sn.total+'개 중 <b>'+ns+'개</b> 없음<br>'
+    +'· 재검SN 미매칭 중 <b>반영 '+(u.sn.counted||0)+'개</b>(재검수에만) · RAW 이전 제외 '+(u.sn.oldSkip||0)+'개'+(u.rawMinDate?' (RAW 첫 합착일 '+u.rawMinDate+' 이전)':'')+' · <b style="color:var(--red,#f44336)">신규 앞자리(모델 미상, 미반영) '+(u.sn.newPrefixCount||0)+'개</b><br>'
+    +((u.sn.newPrefix&&u.sn.newPrefix.length)?'<span style="color:var(--amber,#ff9800)">신규 앞자리(SN 2~8번째, 개수): '+u.sn.newPrefix.slice(0,10).map(function(x){return esc(x.prefix)+' ('+x.n+')';}).join(', ')+(u.sn.newPrefix.length>10?' …':'')+' — 신규 모델/Master 매핑 누락인지 확인 필요</span><br>':'')
     +'<span style="color:var(--tx3)">원인 예: 해당 일보가 아직 RAW 에 없음 / SN 오타·형식 차이 / RAW 에 SET SN 이 비어 있음</span></div>'
-    +(nr?'<div style="font-size:12px;font-weight:700;margin:8px 0 4px">재검결과(불량) 미매칭</div>'+tbl(u.result.items,[['SET SN','sn'],['재검일자','date'],['모델명','model'],['불량구분','type'],['비고','note']],30):'')
-    +(ns?'<div style="font-size:12px;font-weight:700;margin:12px 0 4px">재검SN 미매칭</div>'+tbl(u.sn.items,[['SET SN','sn'],['재검일자','date'],['건수','count']],30):'')
+    +(nr?'<div style="font-size:12px;font-weight:700;margin:8px 0 4px">재검결과(불량) 미매칭</div>'+tbl(u.result.items,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['모델명','model'],['불량구분','type'],['비고','note']],30):'')
+    +(ns?'<div style="font-size:12px;font-weight:700;margin:12px 0 4px">재검SN 미매칭</div>'+tbl(u.sn.items,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['건수','count']],30):'')
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="rwUnmatchedXlsx_()" style="background:var(--sf);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">목록 Excel 다운로드</button>'
     +'<button onclick="document.getElementById(\'rw-unm-modal\').remove()" style="background:var(--sf);border:1px solid var(--bd2);color:var(--tx2);border-radius:8px;padding:7px 14px;cursor:pointer">닫기</button></div></div>';
   document.body.appendChild(m);
@@ -2737,15 +2739,17 @@ function rwUnmatchedXlsx_(){
   var sum=[['재검 파일 업로드 — RAW 미매칭 SN'],[],['파일',_rwUnmatched.file],['RAW SET SN 수',u.rawSNCount],
     ['재검결과(불량 S/N) 전체',u.result.total],['  RAW 에 없음',u.result.unmatched],['  SN 비어 있어 비교 제외',u.result.blank],
     ['재검SN 전체(고유 SN)',u.sn.total],['  RAW 에 없음',u.sn.unmatched],[],
-    ['※ 비교 규칙: SN 앞 14자리·대문자 (집계와 동일). RAW 에 없는 SN 은 재검 Trend 집계에서 빠집니다.']];
+    ['※ 비교 규칙: SN 앞 14자리·대문자 (집계와 동일). RAW 에 없는 SN 은 구분에 따라 처리: 반영=재검수·재검파손에만 / 제외(RAW 이전)=재검일자가 RAW 첫 합착일 이전 / 미반영(신규 앞자리)=모델 추정 불가.'],
+    ['반영(재검SN)',u.sn.counted||0],['RAW 이전 제외(재검SN)',u.sn.oldSkip||0],['신규 앞자리 미반영(재검SN)',u.sn.newPrefixCount||0],['RAW 첫 합착일',u.rawMinDate||'']];
   if(u.capped) sum.push(['※ 건수가 많아 목록은 일부만 담겼습니다 (각 20000건까지)']);
   var ws0=XLSX.utils.aoa_to_sheet(sum); ws0['!cols']=[{wch:30},{wch:40}]; XLSX.utils.book_append_sheet(wb,ws0,'요약');
-  var a1=[['No','SET SN','재검일자','모델명','불량구분','비고']];
-  u.result.items.forEach(function(it,i){ a1.push([i+1,it.sn,it.date,it.model,it.type,it.note]); });
-  var w1=XLSX.utils.aoa_to_sheet(a1); w1['!cols']=[{wch:6},{wch:18},{wch:12},{wch:22},{wch:20},{wch:30}]; XLSX.utils.book_append_sheet(wb,w1,'재검결과 미매칭');
-  var a2=[['No','SET SN','재검일자(처음)','건수']];
-  u.sn.items.forEach(function(it,i){ a2.push([i+1,it.sn,it.date,it.count]); });
-  var w2=XLSX.utils.aoa_to_sheet(a2); w2['!cols']=[{wch:6},{wch:18},{wch:14},{wch:8}]; XLSX.utils.book_append_sheet(wb,w2,'재검SN 미매칭');
+  var a1=[['No','SET SN','구분','재검일자','모델명','불량구분','비고']];
+  u.result.items.forEach(function(it,i){ a1.push([i+1,it.sn,it.cls||'',it.date,it.model,it.type,it.note]); });
+  var w1=XLSX.utils.aoa_to_sheet(a1); w1['!cols']=[{wch:6},{wch:18},{wch:18},{wch:12},{wch:22},{wch:20},{wch:30}]; XLSX.utils.book_append_sheet(wb,w1,'재검결과 미매칭');
+  var a2=[['No','SET SN','구분','재검일자(처음)','건수']];
+  u.sn.items.forEach(function(it,i){ a2.push([i+1,it.sn,it.cls||'',it.date,it.count]); });
+  var w2=XLSX.utils.aoa_to_sheet(a2); w2['!cols']=[{wch:6},{wch:18},{wch:18},{wch:14},{wch:8}]; XLSX.utils.book_append_sheet(wb,w2,'재검SN 미매칭');
+  if(u.sn.newPrefix&&u.sn.newPrefix.length){ var a3=[['SN 2~8번째 글자(신규 앞자리)','SN 수']]; u.sn.newPrefix.forEach(function(x){ a3.push([x.prefix,x.n]); }); var w3=XLSX.utils.aoa_to_sheet(a3); w3['!cols']=[{wch:28},{wch:10}]; XLSX.utils.book_append_sheet(wb,w3,'신규 앞자리'); }
   var d=new Date(), ymd=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
   XLSX.writeFile(wb,'재검_RAW미매칭SN_'+ymd+'.xlsx');
 }
@@ -3398,7 +3402,11 @@ function applyBasisUI_(){
 // SET SN 기준 진단 요약: SN을 못 읽어 합착일로 대체한 건수 등 (모델 전체 합산)
 function snNote_(json){
   var um='';
-  if(json&&json.umStat&&json.umStat.n) um=' · <span style="color:var(--amber,#ff9800)">RAW 에 없는 재검 SN '+json.umStat.n+'건(파손 '+json.umStat.crack+')을 재검수·재검파손에만 반영'+(json.umStat.unknown?' · 모델 미상 '+json.umStat.unknown+'건':'')+'</span>';
+  if(json&&json.umStat){ var us=json.umStat, ps=[];
+    if(us.n) ps.push('RAW 에 없는 재검 SN '+us.n+'건(파손 '+us.crack+')을 재검수·재검파손에만 반영');
+    if(us.skipOld) ps.push('RAW 기간 이전 '+us.skipOld+'건 제외');
+    if(us.skipUnknown) ps.push('모델 미상 '+us.skipUnknown+'건 제외');
+    if(ps.length) um=' · <span style="color:var(--amber,#ff9800)">'+ps.join(' · ')+'</span>'; }
   if(!json||json.basis!=='sn'||!json.snStat) return um;
   var t={snRows:0,snFallback:0,noSN:0,noSNFilled:0,noSNFallback:0};
   var st=json.snStat;
@@ -3486,7 +3494,7 @@ function rwCrackSheets_(tab,ex,json,basis){
     ?'※ "전체" 목록은 이 화면의 재검수에 들어간 SET SN 전부(양품 포함)이고, "파손" 목록은 그중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).'
     :'※ 목록은 SET SN 이 있는 패널 중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).']);
   var umN=allItems.filter(function(it){return it.um;}).length;
-  if(umN) sum.push(['※ "RAW 없음" '+umN+'건: 재검 파일에는 있으나 RAW 에 SET SN 이 없는 건입니다. 모델은 SN 앞 8자리로 추정, 기간은 SET SN 기준=SN 년·월 코드(못 읽으면 재검일자) / 공정 기준=재검일자 월이며, 재검수·재검파손수에만 반영됩니다(투입수·공정 파손율은 RAW 기준 그대로).']);
+  if(umN) sum.push(['※ "RAW 없음" '+umN+'건: 재검 파일에는 있으나 RAW 에 SET SN 이 없는 건입니다. 모델은 SN 2~8번째 글자(첫 글자=연도 제외)로 추정, RAW 첫 합착일 이전 재검과 모델 미상은 제외, 기간은 SET SN 기준=SN 년·월 코드(못 읽으면 재검일자) / 공정 기준=재검일자 월이며, 재검수·재검파손수에만 반영됩니다(투입수·공정 파손율은 RAW 기준 그대로).']);
   var wsS=XLSX.utils.aoa_to_sheet(sum); wsS['!cols']=[{wch:34},{wch:16},{wch:16},{wch:8},{wch:16},{wch:16},{wch:8}];
   var hdr=['No','SET SN','모델','합착일','기간','변경점','재검결과 행 수','RAW 매칭'].concat(json.header||[]);
   var aoa=[hdr];
