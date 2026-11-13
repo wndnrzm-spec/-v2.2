@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611090005)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611130001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -3486,7 +3486,7 @@ function rwCrackSheets_(tab,ex,json,basis){
     ?'※ "전체" 목록은 이 화면의 재검수에 들어간 SET SN 전부(양품 포함)이고, "파손" 목록은 그중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).'
     :'※ 목록은 SET SN 이 있는 패널 중 재검결과에 "Cracked" 가 있는 건입니다. 한 SET SN 이 RAW 에 여러 행이면 행마다 1건으로 셉니다(화면 숫자와 같은 방식).']);
   var umN=allItems.filter(function(it){return it.um;}).length;
-  if(umN) sum.push(['※ "RAW 없음" '+umN+'건: 재검 파일에는 있으나 RAW 에 SET SN 이 없는 건입니다. 모델은 SN 앞 7자리로 추정, 기간은 SET SN 기준=SN 년·월 코드(못 읽으면 재검일자) / 공정 기준=재검일자 월이며, 재검수·재검파손수에만 반영됩니다(투입수·공정 파손율은 RAW 기준 그대로).']);
+  if(umN) sum.push(['※ "RAW 없음" '+umN+'건: 재검 파일에는 있으나 RAW 에 SET SN 이 없는 건입니다. 모델은 SN 앞 8자리로 추정, 기간은 SET SN 기준=SN 년·월 코드(못 읽으면 재검일자) / 공정 기준=재검일자 월이며, 재검수·재검파손수에만 반영됩니다(투입수·공정 파손율은 RAW 기준 그대로).']);
   var wsS=XLSX.utils.aoa_to_sheet(sum); wsS['!cols']=[{wch:34},{wch:16},{wch:16},{wch:8},{wch:16},{wch:16},{wch:8}];
   var hdr=['No','SET SN','모델','합착일','기간','변경점','재검결과 행 수','RAW 매칭'].concat(json.header||[]);
   var aoa=[hdr];
