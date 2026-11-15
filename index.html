@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611130003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611130004)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -505,6 +505,13 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
     </div>
     <input type="file" id="rework-file-input" accept=".xlsx" style="display:none" onchange="uploadReworkFile(this.files[0])">
     <button class="btn btn-g" id="rework-upload-btn" onclick="document.getElementById('rework-file-input').click()" style="padding:7px 14px;font-size:12px">재검 파일 업로드</button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--sf2);border-radius:8px">
+    <div style="flex:1;font-size:12px;color:var(--tx2)">
+      RAW 에 없는 재검 SN 의 앞자리(대표 코드)를 모델에 지정하거나 FLCD 대상 아님으로 처리합니다. 처리하지 않은 앞자리는 집계에서 빠집니다.
+    </div>
+    <button class="btn btn-amber" onclick="openRuleMgr_()" style="padding:7px 14px;font-size:12px">미분류 앞자리 관리</button>
   </div>
 
   <div class="tabs" id="rw-tabs">
@@ -2703,6 +2710,111 @@ function loadReworkFileStatus(){
 
 // ===== 재검 파일 업로드 직후: RAW 에 없는 SN(집계에서 빠지는 것) 알림 =====
 var _rwUnmatched=null;
+
+/* ===== 미분류 SN 앞자리 관리 (모델 지정 / FLCD 대상 아님) — 저장 위치: Master '앞자리규칙' 탭 ===== */
+var _rmData=null;
+function rmEsc_(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function openRuleMgr_(){
+  var old=document.getElementById('rm-modal'); if(old) old.remove();
+  var m=document.createElement('div'); m.id='rm-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div id="rm-box" style="background:var(--sf2);border:1px solid var(--bd2);border-radius:12px;max-width:1040px;width:100%;max-height:90vh;overflow:auto;padding:18px"><div style="font-size:13px;color:var(--tx2)">불러오는 중... (RAW 와 재검 데이터를 비교하므로 잠시 걸립니다)</div></div>';
+  m.addEventListener('click',function(ev){ if(ev.target===m) m.remove(); });
+  document.body.appendChild(m);
+  rmLoad_();
+}
+function rmLoad_(){
+  showLoadingToast_('미분류 앞자리 불러오는 중...');
+  fetch(WEBAPP_URL_SUMMARY+'?action=rulelist').then(function(r){return r.json();}).then(function(j){
+    hideLoadingToast_();
+    if(!j.success){ rmErr_(j.error||'불러오기 실패'); return; }
+    _rmData=j; rmRender_();
+  }).catch(function(e){ hideLoadingToast_(); rmErr_(e.message); });
+}
+function rmErr_(msg){
+  var b=document.getElementById('rm-box'); if(!b) return;
+  b.innerHTML='<div style="color:var(--red,#f44336);font-size:13px;margin-bottom:10px">⚠ '+rmEsc_(msg)+'</div><button class="btn btn-gray" onclick="document.getElementById(\'rm-modal\').remove()" style="padding:7px 14px;font-size:12px">닫기</button>';
+}
+function rmRender_(){
+  var b=document.getElementById('rm-box'); if(!b||!_rmData) return;
+  var d=_rmData, th='style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--bd2);color:var(--tx3);white-space:nowrap;font-size:11px"', td='style="padding:5px 8px;border-bottom:1px solid var(--bd);vertical-align:middle;font-size:12px"';
+  var h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="flex:1;font-size:15px;font-weight:700">미분류 SN 앞자리 관리</div><button class="btn btn-gray" onclick="document.getElementById(\'rm-modal\').remove()" style="padding:5px 12px;font-size:12px">닫기</button></div>';
+  h+='<div style="font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:10px">RAW 에 SET SN 이 없고, 아직 모델이 정해지지 않은 재검 SN 을 <b>SN 2~8번째 글자(대표 코드)</b>별로 묶었습니다. 샘플 SN 을 보고 <b>모델을 지정</b>하거나 <b>FLCD 대상 아님</b>으로 처리하세요. 처리 전에는 집계에서 빠집니다.<br><span style="color:var(--tx3)">RAW 첫 합착일'+(d.rawMinDate?' ('+rmEsc_(d.rawMinDate)+')':'')+' 이전 재검은 집계 제외라 표시하지 않습니다. 저장하면 Master 시트의 \'앞자리규칙\' 탭에 기록되고, 모델별 추이를 새로고침하면 반영됩니다.</span></div>';
+  h+='<datalist id="rm-models">'+(d.models||[]).map(function(m){return '<option value="'+rmEsc_(m)+'">';}).join('')+'</datalist>';
+  if(!d.items.length){
+    h+='<div style="padding:14px;background:var(--sf);border-radius:8px;color:var(--green);font-size:13px">✓ 분류가 필요한 앞자리가 없습니다.</div>';
+  } else {
+    h+='<div style="font-size:12px;font-weight:700;margin:6px 0">미분류 '+d.groupCount+'종 · SN '+d.snTotal+'개'+(d.groupCount>d.items.length?' (건수 많은 '+d.items.length+'종만 표시)':'')+'</div>';
+    h+='<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><tr><th '+th+'>대표 코드</th><th '+th+'>샘플 SN</th><th '+th+'>SN 수(파손)</th><th '+th+'>재검일자</th><th '+th+'>비슷한 정상 코드</th><th '+th+'>처리</th></tr>';
+    d.items.forEach(function(it,i){
+      h+='<tr><td '+td+'><b style="font-family:monospace">'+rmEsc_(it.code)+'</b></td>'
+        +'<td '+td+'><span style="font-family:monospace">'+rmEsc_(it.sample)+'</span></td>'
+        +'<td '+td+'>'+it.n+(it.crack?' <span style="color:var(--red,#f44336)">('+it.crack+')</span>':'')+'</td>'
+        +'<td '+td+' style="white-space:nowrap">'+rmEsc_(it.first)+(it.last&&it.last!==it.first?' ~ '+rmEsc_(it.last):'')+'</td>'
+        +'<td '+td+'>'+(it.near?'<span style="font-family:monospace">'+rmEsc_(it.near)+'</span> ('+rmEsc_(it.nearModel)+') <a href="#" data-rm-near="'+i+'" style="font-size:11px">이 모델로</a>':'-')+'</td>'
+        +'<td '+td+'><input class="rm-model" data-i="'+i+'" list="rm-models" placeholder="모델 선택/입력" style="width:190px;background:var(--sf);border:1px solid var(--bd2);color:var(--tx);border-radius:6px;padding:5px 8px;font-size:12px"> '
+        +'<label style="font-size:12px;white-space:nowrap;cursor:pointer"><input type="checkbox" class="rm-ign" data-i="'+i+'"> FLCD 대상 아님</label></td></tr>';
+    });
+    h+='</table></div>';
+    h+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn btn-g" onclick="rmSave_()" style="padding:7px 16px;font-size:12px">선택한 항목 저장</button></div>';
+  }
+  var rules=d.rules||[];
+  h+='<div style="font-size:12px;font-weight:700;margin:18px 0 6px">등록된 규칙 '+rules.length+'건</div>';
+  if(rules.length){
+    h+='<div style="overflow:auto;max-height:240px"><table style="width:100%;border-collapse:collapse"><tr><th '+th+'>코드</th><th '+th+'>방식</th><th '+th+'>처리</th><th '+th+'>모델</th><th '+th+'>등록일</th><th '+th+'>메모</th><th '+th+'></th></tr>';
+    rules.forEach(function(r,i){
+      h+='<tr><td '+td+'><b style="font-family:monospace">'+rmEsc_(r.code)+'</b></td><td '+td+'>'+rmEsc_(r.mode)+'</td><td '+td+'>'+rmEsc_(r.action)+'</td><td '+td+'>'+rmEsc_(r.model)+'</td><td '+td+'>'+rmEsc_(r.date)+'</td><td '+td+'>'+rmEsc_(r.memo)+'</td><td '+td+'><a href="#" data-rm-del="'+i+'" style="font-size:11px;color:var(--red,#f44336)">삭제</a></td></tr>';
+    });
+    h+='</table></div>';
+  }
+  b.innerHTML=h;
+  b.onclick=function(ev){
+    var t=ev.target;
+    if(t.getAttribute&&t.getAttribute('data-rm-near')!==null){ ev.preventDefault(); var it=_rmData.items[+t.getAttribute('data-rm-near')]; var inp=b.querySelector('.rm-model[data-i="'+t.getAttribute('data-rm-near')+'"]'); if(inp&&it){ inp.value=it.nearModel; var ck=b.querySelector('.rm-ign[data-i="'+t.getAttribute('data-rm-near')+'"]'); if(ck) ck.checked=false; inp.disabled=false; } }
+    if(t.getAttribute&&t.getAttribute('data-rm-del')!==null){ ev.preventDefault(); rmDelete_(+t.getAttribute('data-rm-del')); }
+  };
+  b.onchange=function(ev){
+    var t=ev.target;
+    if(t.classList&&t.classList.contains('rm-ign')){ var inp=b.querySelector('.rm-model[data-i="'+t.getAttribute('data-i')+'"]'); if(inp){ inp.disabled=t.checked; if(t.checked) inp.value=''; } }
+  };
+}
+function rmPost_(ops,done){
+  if(!ensureAdminAuth_()) return;
+  showLoadingToast_('저장 중...');
+  fetch(WEBAPP_URL_SUMMARY,{method:'POST',body:JSON.stringify({uploadType:'rulesave',pw:ADMIN_PASSWORD,ops:ops})})
+    .then(function(r){return r.json();}).then(function(j){
+      hideLoadingToast_();
+      if(!j.success){ alert('⚠ 저장 실패\n\n'+j.error); return; }
+      done(j);
+    }).catch(function(e){ hideLoadingToast_(); alert('⚠ 저장 실패\n\n'+e.message); });
+}
+function rmSave_(){
+  var b=document.getElementById('rm-box'); if(!b||!_rmData) return;
+  var ops=[], bad='';
+  _rmData.items.forEach(function(it,i){
+    var ig=b.querySelector('.rm-ign[data-i="'+i+'"]'), inp=b.querySelector('.rm-model[data-i="'+i+'"]');
+    if(ig&&ig.checked) ops.push({code:it.code,mode:'앞자리',action:'비대상',sample:it.sample});
+    else if(inp&&inp.value.trim()) ops.push({code:it.code,mode:'앞자리',action:'모델',model:inp.value.trim(),sample:it.sample});
+  });
+  if(!ops.length){ alert('모델을 입력하거나 "FLCD 대상 아님"을 체크한 항목이 없습니다.'); return; }
+  var mdl=ops.filter(function(o){return o.action==='모델';}), ign=ops.length-mdl.length;
+  var known={}; (_rmData.models||[]).forEach(function(m){ known[m.toLowerCase().replace(/[\s_]+/g,'')]=1; });
+  var newM=mdl.filter(function(o){return !known[o.model.toLowerCase().replace(/[\s_]+/g,'')];}).map(function(o){return o.code+' → '+o.model;});
+  if(!confirm('저장할까요?\n\n모델 지정 '+mdl.length+'건 · FLCD 대상 아님 '+ign+'건'+(newM.length?'\n\n⚠ RAW 에 없는 모델명(새 모델로 집계됨):\n'+newM.join('\n'):''))) return;
+  rmPost_(ops,function(j){
+    alert('저장했습니다 ('+j.saved+'건). 모델별 추이를 새로 불러옵니다.');
+    try{ _reworkData=null; loadReworkTrend(); }catch(e){}
+    rmLoad_();
+  });
+}
+function rmDelete_(i){
+  var r=(_rmData.rules||[])[i]; if(!r) return;
+  if(!confirm('규칙을 삭제할까요?\n\n'+r.code+' ('+r.mode+') — '+r.action+(r.model?' / '+r.model:'')+'\n\n삭제하면 이 앞자리는 다시 미분류가 됩니다.')) return;
+  rmPost_([{code:r.code,mode:r.mode,action:'삭제'}],function(j){
+    try{ _reworkData=null; loadReworkTrend(); }catch(e){}
+    rmLoad_();
+  });
+}
 function rwUnmatchedNotice_(j,el){
   var u=j&&j.unmatched; if(!u) return;
   if(u.error){ el.textContent+=' (RAW 매칭 확인 실패: '+u.error+')'; return; }
@@ -2725,11 +2837,11 @@ function rwUnmatchedNotice_(j,el){
     +'· 재검결과(불량 S/N): '+u.result.total+'건 중 <b>'+nr+'건</b> 없음'+(u.result.blank?' (SN 비어 있는 행 '+u.result.blank+'건은 비교 제외)':'')+'<br>'
     +'· 재검SN(재검 수량): '+u.sn.total+'개 중 <b>'+ns+'개</b> 없음<br>'
     +'· 재검SN 미매칭 중 <b>반영 '+(u.sn.counted||0)+'개</b>(재검수에만) · RAW 이전 제외 '+(u.sn.oldSkip||0)+'개 · 비대상(FLCD 아님) '+(u.sn.ignored||0)+'개'+(u.rawMinDate?' (RAW 첫 합착일 '+u.rawMinDate+' 이전)':'')+' · <b style="color:var(--red,#f44336)">신규 앞자리(모델 미상, 미반영) '+(u.sn.newPrefixCount||0)+'개</b><br>'
-    +((u.sn.newPrefix&&u.sn.newPrefix.length)?'<span style="color:var(--amber,#ff9800)">신규 앞자리(SN 2~8번째, 개수): '+u.sn.newPrefix.slice(0,10).map(function(x){return esc(x.prefix)+' ('+x.n+')';}).join(', ')+(u.sn.newPrefix.length>10?' …':'')+' — FLCD 제품인지 확인 필요 (FLCD 가 아니면 알려주세요: 제외 목록에 추가합니다)</span><br>':'')
+    +((u.sn.newPrefix&&u.sn.newPrefix.length)?'<span style="color:var(--amber,#ff9800)">신규 앞자리(SN 2~8번째, 개수): '+u.sn.newPrefix.slice(0,10).map(function(x){return esc(x.prefix)+' ('+x.n+')';}).join(', ')+(u.sn.newPrefix.length>10?' …':'')+' — 아래 "미분류 앞자리 관리"에서 모델을 지정하거나 FLCD 대상 아님으로 처리하세요</span><br>':'')
     +'<span style="color:var(--tx3)">원인 예: 해당 일보가 아직 RAW 에 없음 / SN 오타·형식 차이 / RAW 에 SET SN 이 비어 있음</span></div>'
     +(nr?'<div style="font-size:12px;font-weight:700;margin:8px 0 4px">재검결과(불량) 미매칭</div>'+tbl(u.result.items,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['모델명','model'],['불량구분','type'],['비고','note']],30):'')
     +(ns?'<div style="font-size:12px;font-weight:700;margin:12px 0 4px">재검SN 미매칭</div>'+tbl(u.sn.items,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['건수','count']],30):'')
-    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="rwUnmatchedXlsx_()" style="background:var(--sf);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">목록 Excel 다운로드</button>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="document.getElementById(\'rw-unm-modal\').remove();openRuleMgr_()" style="background:var(--sf);border:1.5px solid var(--amber,#ff9800);color:var(--amber,#ff9800);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">미분류 앞자리 관리</button><button onclick="rwUnmatchedXlsx_()" style="background:var(--sf);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">목록 Excel 다운로드</button>'
     +'<button onclick="document.getElementById(\'rw-unm-modal\').remove()" style="background:var(--sf);border:1px solid var(--bd2);color:var(--tx2);border-radius:8px;padding:7px 14px;cursor:pointer">닫기</button></div></div>';
   document.body.appendChild(m);
 }
