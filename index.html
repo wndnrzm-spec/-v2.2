@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611130004)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611160001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -3974,19 +3974,22 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml,
   });
 
   // 변경점: 시작 점선 + 라벨 + START~END 구간 가로선 (막대 위쪽 여백)
-  mk.forEach(function(m){
+  mk.forEach(function(m,mi){
     var c0=mkColor_(m.items[0].ci);
     var by=m.by, bh=m.bh;
     var bx=Math.min(m.x+3, W-2-m.w); if(bx<2) bx=2;
     var anyStart=m.items.some(function(it){ return !it.before; });
     var lineTop=by+bh;
     if(anyStart) svg+='<line x1="'+m.x+'" y1="'+lineTop+'" x2="'+m.x+'" y2="'+(padT+chartH)+'" stroke="'+c0+'" stroke-width="1.3" stroke-dasharray="4 3" opacity="0.9"/>';
-    svg+='<g><title>'+esc_(m.lines.join('\n'))+(m.sub?'\n'+esc_(m.sub):'')+'</title>'
+    svg+='<g><title>'+esc_(m.lines.join('\n'))+(m.sub?'\n'+esc_(m.sub):'')+'\n(더블클릭: 변경 상세 내용)</title>'
       +'<rect x="'+bx+'" y="'+by+'" width="'+m.w+'" height="'+bh+'" rx="4" fill="#171c2e" stroke="'+c0+'" stroke-width="1"/>';
     m.lines.forEach(function(l,k){
       svg+='<text x="'+(bx+7)+'" y="'+(by+11+12*k)+'" font-size="10" font-weight="700" fill="'+mkColor_(m.items[k].ci)+'">'+esc_(l)+'</text>';
     });
     if(m.sub) svg+='<text x="'+(bx+7)+'" y="'+(by+12*m.lines.length+9)+'" font-size="9" fill="'+c0+'">'+esc_(m.sub)+'</text>';
+    m.items.forEach(function(it,k){ // 줄마다 투명 클릭 영역 — 더블클릭하면 그 변경점의 상세 내용
+      svg+='<rect data-mkd="'+mi+'" data-k="'+k+'" x="'+bx+'" y="'+(by+2+12*k)+'" width="'+m.w+'" height="12" fill="transparent" style="cursor:pointer"/>';
+    });
     svg+='</g>';
     // 구간 가로선 — 변경점(이름)마다 한 줄, 같은 이름의 여러 구간은 같은 줄에 각각
     m.items.forEach(function(it,k){
@@ -4009,6 +4012,36 @@ function buildReworkCombo_(containerId, labels, rowsByPeriod, markers, noteHtml,
   legend+='</div>';
 
   el.innerHTML=legend+(noteHtml||'')+'<div style="overflow-x:auto">'+svg+'</div>';
+  // 변경점 상자 더블클릭(모바일은 빠른 두 번 탭) → 변경 상세 내용 (Master '변경점' 탭 E열)
+  var _tapT=0, _tapN=null;
+  function openMk_(node){
+    if(!node) return;
+    var m=mk[+node.getAttribute('data-mkd')]; var it=m&&m.items[+node.getAttribute('data-k')];
+    if(it) showCpDetail_(it);
+  }
+  el.ondblclick=function(ev){ var t=ev.target; openMk_(t&&t.closest?t.closest('[data-mkd]'):null); };
+  el.ontouchend=function(ev){
+    var t=ev.target, node=t&&t.closest?t.closest('[data-mkd]'):null, now=Date.now();
+    if(node && _tapN===node && now-_tapT<350){ ev.preventDefault(); _tapT=0; _tapN=null; openMk_(node); }
+    else { _tapT=now; _tapN=node; }
+  };
+}
+// 변경점 상세 내용 팝업 — 같은 변경명이 여러 행이어도 처음 적힌 E열 하나만 보임 (서버에서 처리)
+function showCpDetail_(it){
+  var old=document.getElementById('cp-detail-modal'); if(old) old.remove();
+  function esc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  var det=String(it.detail||'').trim();
+  var m=document.createElement('div'); m.id='cp-detail-modal';
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div style="background:var(--sf2);border:1px solid var(--bd2);border-radius:12px;max-width:620px;width:100%;max-height:85vh;overflow:auto;padding:18px">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:4px">'+esc(it.label||it.text)+'</div>'
+    +'<div style="font-size:12px;color:var(--tx2);margin-bottom:12px;line-height:1.6">'+(it.model?esc(it.model)+' · ':'')+(it.period?'첫 적용 '+esc(typeof displayLabel_==='function'?displayLabel_(it.period):it.period):'')+(it.date?' ('+esc(it.date)+')':'')+(it.startSN?'<br>시작 SN '+esc(it.startSN):'')+'</div>'
+    +'<div style="font-size:11px;color:var(--tx3);margin-bottom:4px">변경 상세 내용</div>'
+    +(det?'<div style="white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.7;background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:12px">'+esc(det)+'</div>'
+          :'<div style="font-size:12px;color:var(--tx3);background:var(--sf);border:1px dashed var(--bd2);border-radius:8px;padding:12px">등록된 상세 내용이 없습니다. (Master 시트 \'변경점\' 탭 E열에 입력하세요. 같은 변경명이 여러 행이면 처음 한 행에만 적으면 됩니다.)</div>')
+    +'<div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-gray" onclick="document.getElementById(\'cp-detail-modal\').remove()" style="padding:7px 16px;font-size:12px">닫기</button></div></div>';
+  m.addEventListener('click',function(ev){ if(ev.target===m) m.remove(); });
+  document.body.appendChild(m);
 }
 
 function reworkHeaderRow_(firstColLabel){
@@ -4214,7 +4247,8 @@ function renderReworkModelTrend(){
     var before=(firstSi<startIdx); // 조회 기간 이전에 시작한 변경점
     (byStart[vis[0].s]=byStart[vis[0].s]||[]).push({
       text: before ? (cp.label+' ('+displayLabel_(cp.period)+'~)') : cp.label,
-      before: before, ci: cpCi[cp.label], spans: vis
+      before: before, ci: cpCi[cp.label], spans: vis,
+      label: cp.label, detail: cp.detail||'', startSN: cp.startSN||'', date: cp.date||'', period: cp.period||'', model: model
     });
   });
   var markers=Object.keys(byStart).map(Number).sort(function(a,b){return a-b;}).map(function(i){
