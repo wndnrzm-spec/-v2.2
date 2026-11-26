@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611260002)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611260003)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2760,7 +2760,8 @@ function rmRender_(){
         +'<td '+td+' style="white-space:nowrap">'+rmEsc_(it.first)+(it.last&&it.last!==it.first?' ~ '+rmEsc_(it.last):'')+'</td>'
         +'<td '+td+'>'+(it.near?'<span style="font-family:monospace">'+rmEsc_(it.near)+'</span> ('+rmEsc_(it.nearModel)+') <a href="#" data-rm-near="'+i+'" style="font-size:11px">이 모델로</a>':'-')+'</td>'
         +'<td '+td+'><input class="rm-model" data-i="'+i+'" list="rm-models" placeholder="모델 선택/입력" style="width:190px;background:var(--sf);border:1px solid var(--bd2);color:var(--tx);border-radius:6px;padding:5px 8px;font-size:12px"> '
-        +'<label style="font-size:12px;white-space:nowrap;cursor:pointer"><input type="checkbox" class="rm-ign" data-i="'+i+'"> FLCD 대상 아님</label></td></tr>';
+        +'<label style="font-size:12px;white-space:nowrap;cursor:pointer"><input type="checkbox" class="rm-ign" data-i="'+i+'"> FLCD 대상 아님</label> '
+        +'<a href="#" data-rm-fix="'+i+'" style="font-size:11px;white-space:nowrap" title="SN 가 잘못 입력된 경우 — 아래 SN 보정 규칙에 채워 둡니다">SN 오타 보정 →</a></td></tr>';
     });
     h+='</table></div>';
     h+='<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="btn btn-g" onclick="rmSave_()" style="padding:7px 16px;font-size:12px">선택한 항목 저장</button></div>';
@@ -2774,9 +2775,35 @@ function rmRender_(){
     });
     h+='</table></div>';
   }
+  var fx=d.fixes||[];
+  var inpS='background:var(--sf);border:1px solid var(--bd2);color:var(--tx);border-radius:6px;padding:5px 8px;font-size:12px;font-family:monospace';
+  h+='<div id="rm-fix" style="margin-top:20px;padding-top:14px;border-top:2px solid var(--bd2)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:4px">SN 보정 규칙 (재검 파일의 SN 오타를 업로드 때 자동으로 고침) '+fx.length+'건</div>'
+    +'<div style="font-size:12px;color:var(--tx2);line-height:1.6;margin-bottom:8px">'
+    +'· <b>SN 교체</b>: 변경 전 SN(앞 14자리)이 같으면 변경 후 SN 으로 통째로 바꿈 &nbsp;예) TD0001 → TDA0001<br>'
+    +'· <b>앞 글자 제거</b>: SN 이 변경 전 글자로 시작하면 그 글자를 지움 (숫자로 시작하는 글자는 불가) &nbsp;예) ".." · "\\" · "P"<br>'
+    +'· <b>앞자리 치환</b>: SN 2~8번째 7글자가 같으면 7글자로 바꿈 (1번째 연도 글자는 유지) &nbsp;예) 52FALT1 → 52FAIT1<br>'
+    +'<span style="color:var(--tx3)">저장하면 지금 시트에 있는 데이터에도 바로 적용되고, 이후 재검 파일을 올릴 때마다 자동 적용됩니다. 바뀐 행의 원래 SN 은 시트의 \'원본 SN\' 열에 남습니다.</span></div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">'
+    +'<select id="rmf-type" onchange="rmFixType_()" style="'+inpS+';font-family:inherit"><option value="SN교체">SN 교체</option><option value="앞글자제거">앞 글자 제거</option><option value="앞자리치환">앞자리 치환</option></select>'
+    +'<input id="rmf-from" placeholder="변경 전" style="'+inpS+';width:190px"> <span>→</span>'
+    +'<input id="rmf-to" placeholder="변경 후" style="'+inpS+';width:190px">'
+    +'<button class="btn btn-g" onclick="rmFixSave_()" style="padding:6px 14px;font-size:12px">보정 규칙 저장·적용</button>'
+    +'<span id="rmf-hint" style="font-size:11px;color:var(--tx3)"></span></div>';
+  if(fx.length){
+    h+='<div style="overflow:auto;max-height:220px"><table style="width:100%;border-collapse:collapse"><tr><th '+th+'>종류</th><th '+th+'>변경 전</th><th '+th+'>변경 후</th><th '+th+'>샘플 SN</th><th '+th+'>등록일</th><th '+th+'></th></tr>';
+    fx.forEach(function(r,i){
+      h+='<tr><td '+td+'>'+rmEsc_(r.type)+'</td><td '+td+'><b style="font-family:monospace">'+rmEsc_(r.from)+'</b></td><td '+td+'><span style="font-family:monospace">'+rmEsc_(r.to)+'</span></td><td '+td+'><span style="font-family:monospace">'+rmEsc_(r.sample)+'</span></td><td '+td+'>'+rmEsc_(r.date)+'</td><td '+td+'><a href="#" data-rmf-del="'+i+'" style="font-size:11px;color:var(--red,#f44336)">삭제</a></td></tr>';
+    });
+    h+='</table></div>';
+  }
+  h+='</div>';
   b.innerHTML=h;
+  rmFixType_();
   b.onclick=function(ev){
     var t=ev.target;
+    if(t.getAttribute&&t.getAttribute('data-rm-fix')!==null){ ev.preventDefault(); rmFixPrefill_(+t.getAttribute('data-rm-fix')); return; }
+    if(t.getAttribute&&t.getAttribute('data-rmf-del')!==null){ ev.preventDefault(); rmFixDelete_(+t.getAttribute('data-rmf-del')); return; }
     if(t.getAttribute&&t.getAttribute('data-rm-near')!==null){ ev.preventDefault(); var it=_rmData.items[+t.getAttribute('data-rm-near')]; var inp=b.querySelector('.rm-model[data-i="'+t.getAttribute('data-rm-near')+'"]'); if(inp&&it){ inp.value=it.nearModel; var ck=b.querySelector('.rm-ign[data-i="'+t.getAttribute('data-rm-near')+'"]'); if(ck) ck.checked=false; inp.disabled=false; } }
     if(t.getAttribute&&t.getAttribute('data-rm-del')!==null){ ev.preventDefault(); rmDelete_(+t.getAttribute('data-rm-del')); }
   };
@@ -2784,6 +2811,61 @@ function rmRender_(){
     var t=ev.target;
     if(t.classList&&t.classList.contains('rm-ign')){ var inp=b.querySelector('.rm-model[data-i="'+t.getAttribute('data-i')+'"]'); if(inp){ inp.disabled=t.checked; if(t.checked) inp.value=''; } }
   };
+}
+var _rmFixSample='';
+function rmFixType_(){
+  var ty=document.getElementById('rmf-type'), fr=document.getElementById('rmf-from'), to=document.getElementById('rmf-to'), hint=document.getElementById('rmf-hint');
+  if(!ty||!fr||!to) return;
+  var t=ty.value;
+  if(t==='SN교체'){ fr.placeholder='틀린 SN (앞 14자리)'; to.placeholder='올바른 SN'; to.disabled=false; hint.textContent=''; }
+  else if(t==='앞글자제거'){ fr.placeholder='지울 글자 (예: .. 또는 P)'; to.placeholder='(사용 안 함)'; to.value=''; to.disabled=true; hint.textContent='SN 이 이 글자로 시작하면 지웁니다'; }
+  else { fr.placeholder='틀린 7글자 (SN 2~8번째)'; to.placeholder='올바른 7글자'; to.disabled=false; hint.textContent='SN 첫 글자(연도)는 그대로 둡니다'; }
+}
+function rmFixPrefill_(i){
+  var it=(_rmData&&_rmData.items||[])[i]; if(!it) return;
+  var sample=String(it.sample||''), lead=(sample.match(/^[^0-9]+/)||[''])[0];
+  var ty=document.getElementById('rmf-type'), fr=document.getElementById('rmf-from'), to=document.getElementById('rmf-to');
+  if(lead){ ty.value='앞글자제거'; fr.value=lead; to.value=''; }
+  else if(it.near){ ty.value='앞자리치환'; fr.value=it.code; to.value=it.near; }
+  else { ty.value='SN교체'; fr.value=sample; to.value=''; }
+  _rmFixSample=sample;
+  rmFixType_();
+  var box=document.getElementById('rm-fix'); if(box&&box.scrollIntoView) box.scrollIntoView({behavior:'smooth',block:'start'});
+  (to.disabled||to.value?fr:to).focus();
+}
+function rmFixPost_(ops,done){
+  if(!ensureAdminAuth_()) return;
+  showLoadingToast_('저장 중... (현재 데이터에도 적용하므로 잠시 걸립니다)');
+  fetch(WEBAPP_URL_SUMMARY,{method:'POST',body:JSON.stringify({uploadType:'fixsave',pw:ADMIN_PASSWORD,ops:ops})})
+    .then(function(r){return r.json();}).then(function(j){
+      hideLoadingToast_();
+      if(!j.success){ alert('⚠ 저장 실패\n\n'+j.error); return; }
+      done(j);
+    }).catch(function(e){ hideLoadingToast_(); alert('⚠ 저장 실패\n\n'+e.message); });
+}
+function rmFixSave_(){
+  var type=document.getElementById('rmf-type').value, from=document.getElementById('rmf-from').value.trim().toUpperCase(), to=document.getElementById('rmf-to').value.trim().toUpperCase();
+  if(!from){ alert('변경 전 값을 입력해 주세요.'); return; }
+  if(type==='SN교체'){ from=from.substring(0,14); to=to.substring(0,14); if(!to){ alert('올바른 SN 을 입력해 주세요.'); return; } if(from===to){ alert('변경 전과 변경 후가 같습니다.'); return; } }
+  else if(type==='앞글자제거'){ if(/^[0-9]/.test(from)){ alert('숫자로 시작하는 글자는 지울 수 없습니다.\n정상 SN 의 연도 숫자가 지워집니다.'); return; } to=''; }
+  else { if(from.length!==7||to.length!==7){ alert('앞자리 치환은 7글자 → 7글자여야 합니다.'); return; } if(from===to){ alert('변경 전과 변경 후가 같습니다.'); return; } }
+  var msg=type==='앞글자제거'?'SN 맨 앞의 "'+from+'" 를 지웁니다.':'"'+from+'" → "'+to+'" 로 바꿉니다.';
+  if(!confirm('SN 보정 규칙을 저장할까요?\n\n['+type+'] '+msg+'\n\n저장하면 지금 시트의 재검 데이터에도 바로 적용되고, 앞으로 올리는 재검 파일에도 자동 적용됩니다.')) return;
+  rmFixPost_([{type:type,from:from,to:to,sample:_rmFixSample,action:'저장'}],function(j){
+    var a=j.applied||{};
+    alert('저장했습니다.\n\n현재 데이터에 적용: 재검결과 '+(a.result||0)+'건, 재검SN '+(a.sn||0)+'건\n모델별 추이를 새로 불러옵니다.');
+    _rmFixSample='';
+    try{ _reworkData=null; loadReworkTrend(); }catch(e){}
+    rmLoad_();
+  });
+}
+function rmFixDelete_(i){
+  var r=(_rmData.fixes||[])[i]; if(!r) return;
+  if(!confirm('보정 규칙을 삭제할까요?\n\n['+r.type+'] '+r.from+(r.to?' → '+r.to:'')+'\n\n삭제해도 이미 보정된 데이터는 그대로 있고, 다음 재검 파일을 올릴 때 원래 값으로 돌아갑니다.')) return;
+  rmFixPost_([{type:r.type,from:r.from,to:r.to,action:'삭제'}],function(j){
+    try{ _reworkData=null; loadReworkTrend(); }catch(e){}
+    rmLoad_();
+  });
 }
 function rmPost_(ops,done){
   if(!ensureAdminAuth_()) return;
@@ -2865,12 +2947,12 @@ function rwUnmatchedXlsx_(){
     ['반영(재검SN)',u.sn.counted||0],['RAW 이전 제외(재검SN)',u.sn.oldSkip||0],['비대상(FLCD 아님, 재검SN)',u.sn.ignored||0],['신규 앞자리 미반영(재검SN)',u.sn.newPrefixCount||0],['RAW 첫 합착일',u.rawMinDate||'']];
   if(u.capped) sum.push(['※ 건수가 많아 목록은 일부만 담겼습니다 (각 20000건까지)']);
   var ws0=XLSX.utils.aoa_to_sheet(sum); ws0['!cols']=[{wch:30},{wch:40}]; XLSX.utils.book_append_sheet(wb,ws0,'요약');
-  var a1=[['No','SET SN','앞자리(2~8번째)','구분','재검일자','모델명','불량구분','비고']];
-  u.result.items.forEach(function(it,i){ a1.push([i+1,it.sn,rwPfx_(it.sn),it.cls||'',it.date,it.model,it.type,it.note]); });
-  var w1=XLSX.utils.aoa_to_sheet(a1); w1['!cols']=[{wch:6},{wch:18},{wch:16},{wch:18},{wch:12},{wch:22},{wch:20},{wch:30}]; XLSX.utils.book_append_sheet(wb,w1,'재검결과 미매칭');
-  var a2=[['No','SET SN','앞자리(2~8번째)','구분','재검일자(처음)','건수']];
-  u.sn.items.forEach(function(it,i){ a2.push([i+1,it.sn,rwPfx_(it.sn),it.cls||'',it.date,it.count]); });
-  var w2=XLSX.utils.aoa_to_sheet(a2); w2['!cols']=[{wch:6},{wch:18},{wch:16},{wch:18},{wch:14},{wch:8}]; XLSX.utils.book_append_sheet(wb,w2,'재검SN 미매칭');
+  var a1=[['No','SET SN','앞자리(2~8번째)','구분','재검일자','모델명','불량구분','비고','원본 SN(보정된 경우)']];
+  u.result.items.forEach(function(it,i){ a1.push([i+1,it.sn,rwPfx_(it.sn),it.cls||'',it.date,it.model,it.type,it.note,it.orig||'']); });
+  var w1=XLSX.utils.aoa_to_sheet(a1); w1['!cols']=[{wch:6},{wch:18},{wch:16},{wch:18},{wch:12},{wch:22},{wch:20},{wch:30},{wch:22}]; XLSX.utils.book_append_sheet(wb,w1,'재검결과 미매칭');
+  var a2=[['No','SET SN','앞자리(2~8번째)','구분','재검일자(처음)','건수','원본 SN(보정된 경우)']];
+  u.sn.items.forEach(function(it,i){ a2.push([i+1,it.sn,rwPfx_(it.sn),it.cls||'',it.date,it.count,it.orig||'']); });
+  var w2=XLSX.utils.aoa_to_sheet(a2); w2['!cols']=[{wch:6},{wch:18},{wch:16},{wch:18},{wch:14},{wch:8},{wch:22}]; XLSX.utils.book_append_sheet(wb,w2,'재검SN 미매칭');
   if(u.sn.newPrefix&&u.sn.newPrefix.length){ var a3=[['SN 2~8번째 글자(신규 앞자리)','SN 수']]; u.sn.newPrefix.forEach(function(x){ a3.push([x.prefix,x.n]); }); var w3=XLSX.utils.aoa_to_sheet(a3); w3['!cols']=[{wch:28},{wch:10}]; XLSX.utils.book_append_sheet(wb,w3,'신규 앞자리'); }
   var d=new Date(), ymd=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
   XLSX.writeFile(wb,'재검_RAW미매칭SN_'+ymd+'.xlsx');
@@ -2895,6 +2977,7 @@ function uploadReworkFile(file){
         hideLoadingToast_();
         if(j.success){
           el.textContent=j.fileName+' — 재검결과 '+j.resultRows+'행, 재검SN '+j.snRows+'행 반영 완료';
+          if(j.snFixed&&(j.snFixed.result||j.snFixed.sn)) el.textContent+=' · SN 보정 '+((j.snFixed.result||0)+(j.snFixed.sn||0))+'건 적용 (재검결과 '+(j.snFixed.result||0)+', 재검SN '+(j.snFixed.sn||0)+')';
           _reworkData=null;
           loadReworkTrend();
           try{ rwUnmatchedNotice_(j,el); }catch(e){}
