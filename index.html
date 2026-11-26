@@ -128,7 +128,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Malgun Gothic','Apple SD 
   <div style="display:flex;align-items:center;gap:10px">
     <span class="logo">&#x1F4E6;</span>
     <div>
-      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611170003)</span></div>
+      <div class="hdr-t">품질 관리 시스템 V2.3 <span style="font-size:12px;color:var(--tx3);font-weight:400">(2611260001)</span></div>
       <div class="hdr-s">출하 검증 시스템 &middot; 출하 검증 시스템 2 &middot; IQC &middot; 출고 후 불량 이력 조회</div>
     </div>
   </div>
@@ -2828,7 +2828,11 @@ function rwUnmatchedNotice_(j,el){
   _rwUnmatched={u:u,file:j.fileName};
   var nr=u.result.unmatched, ns=u.sn.unmatched;
   if(!nr&&!ns){ el.textContent+=' · RAW 매칭 누락 없음 ✓'; return; }
-  el.textContent+=' · ⚠ RAW 에 없는 SN: 재검결과 '+nr+'건, 재검SN '+ns+'개';
+  function isPend(it){ return String(it.cls||'').indexOf('미반영')===0; }
+  var pr=(u.result.items||[]).filter(isPend), ps=(u.sn.items||[]).filter(isPend);
+  var doneTxt='처리 완료: 반영 '+(u.sn.counted||0)+' · 비대상 '+(u.sn.ignored||0)+(u.sn.oldSkip?' · RAW 이전 제외 '+u.sn.oldSkip:'');
+  if(!pr.length&&!ps.length){ el.textContent+=' · RAW 미매칭은 모두 처리됨 ✓ ('+doneTxt+')'; return; }
+  el.textContent+=' · ⚠ 조치 필요(신규 앞자리): 재검결과 '+pr.length+'건, 재검SN '+ps.length+'개';
   var old=document.getElementById('rw-unm-modal'); if(old) old.remove();
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function tbl(items,cols,max){
@@ -2839,15 +2843,13 @@ function rwUnmatchedNotice_(j,el){
   var m=document.createElement('div'); m.id='rw-unm-modal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
   m.innerHTML='<div style="background:var(--sf2);border:1px solid var(--bd2);border-radius:12px;max-width:760px;width:100%;max-height:85vh;overflow:auto;padding:18px">'
-    +'<div style="font-size:15px;font-weight:700;color:var(--amber,#ff9800);margin-bottom:6px">⚠ RAW 에 매칭되지 않은 SN 이 있습니다 — 아래 구분에 따라 재검수에만 반영되거나 제외됩니다</div>'
-    +'<div style="font-size:12px;color:var(--tx2);margin-bottom:10px;line-height:1.6">'+esc(j.fileName)+' 기준 · RAW(전체 연도)의 SET SN '+u.rawSNCount+'개와 비교 (앞 14자리·대문자)<br>'
-    +'· 재검결과(불량 S/N): '+u.result.total+'건 중 <b>'+nr+'건</b> 없음'+(u.result.blank?' (SN 비어 있는 행 '+u.result.blank+'건은 비교 제외)':'')+'<br>'
-    +'· 재검SN(재검 수량): '+u.sn.total+'개 중 <b>'+ns+'개</b> 없음<br>'
-    +'· 재검SN 미매칭 중 <b>반영 '+(u.sn.counted||0)+'개</b>(재검수에만) · RAW 이전 제외 '+(u.sn.oldSkip||0)+'개 · 비대상(FLCD 아님) '+(u.sn.ignored||0)+'개'+(u.rawMinDate?' (RAW 첫 합착일 '+u.rawMinDate+' 이전)':'')+' · <b style="color:var(--red,#f44336)">신규 앞자리(모델 미상, 미반영) '+(u.sn.newPrefixCount||0)+'개</b><br>'
+    +'<div style="font-size:15px;font-weight:700;color:var(--amber,#ff9800);margin-bottom:6px">⚠ 모델을 알 수 없는 신규 앞자리 SN 이 있습니다 — 모델 지정 또는 FLCD 대상 아님 처리가 필요합니다</div>'
+    +'<div style="font-size:12px;color:var(--tx2);margin-bottom:10px;line-height:1.6">'+esc(j.fileName)+' 기준<br>'
+    +'· <b style="color:var(--red,#f44336)">신규 앞자리(모델 미상, 미반영): 재검결과 '+pr.length+'건 · 재검SN '+ps.length+'개</b><br>'
     +((u.sn.newPrefix&&u.sn.newPrefix.length)?'<span style="color:var(--amber,#ff9800)">신규 앞자리(SN 2~8번째, 개수): '+u.sn.newPrefix.slice(0,10).map(function(x){return esc(x.prefix)+' ('+x.n+')';}).join(', ')+(u.sn.newPrefix.length>10?' …':'')+' — 아래 "미분류 앞자리 관리"에서 모델을 지정하거나 FLCD 대상 아님으로 처리하세요</span><br>':'')
-    +'<span style="color:var(--tx3)">원인 예: 해당 일보가 아직 RAW 에 없음 / SN 오타·형식 차이 / RAW 에 SET SN 이 비어 있음</span></div>'
-    +(nr?'<div style="font-size:12px;font-weight:700;margin:8px 0 4px">재검결과(불량) 미매칭</div>'+tbl(u.result.items,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['모델명','model'],['불량구분','type'],['비고','note']],30):'')
-    +(ns?'<div style="font-size:12px;font-weight:700;margin:12px 0 4px">재검SN 미매칭</div>'+tbl(u.sn.items,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['건수','count']],30):'')
+    +'<span style="color:var(--tx3)">'+doneTxt+' (알람 대상 아님 · 전체 목록은 Excel 에 포함)</span></div>'
+    +(pr.length?'<div style="font-size:12px;font-weight:700;margin:8px 0 4px">재검결과(불량) 미반영</div>'+tbl(pr,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['모델명','model'],['불량구분','type'],['비고','note']],30):'')
+    +(ps.length?'<div style="font-size:12px;font-weight:700;margin:12px 0 4px">재검SN 미반영</div>'+tbl(ps,[['SET SN','sn'],['구분','cls'],['재검일자','date'],['건수','count']],30):'')
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="document.getElementById(\'rw-unm-modal\').remove();openRuleMgr_()" style="background:var(--sf);border:1.5px solid var(--amber,#ff9800);color:var(--amber,#ff9800);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">미분류 앞자리 관리</button><button onclick="rwUnmatchedXlsx_()" style="background:var(--sf);border:1.5px solid var(--green);color:var(--green);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer">목록 Excel 다운로드</button>'
     +'<button onclick="document.getElementById(\'rw-unm-modal\').remove()" style="background:var(--sf);border:1px solid var(--bd2);color:var(--tx2);border-radius:8px;padding:7px 14px;cursor:pointer">닫기</button></div></div>';
   document.body.appendChild(m);
